@@ -20,16 +20,19 @@ jobs:
       - uses: actions/checkout@v7.0.0
         with:
           fetch-depth: 0
+          ref: ${{ github.event.pull_request.head.sha }}
+
+      - name: Fetch base branch
+        run: git fetch origin ${{ github.base_ref }}:refs/remotes/origin/${{ github.base_ref }}
 
       - name: Check if PR is based on latest main
         run: |
           set -euo pipefail
-          # Get the base branch (should be main)
           BASE_BRANCH="${{ github.base_ref }}"
           echo "Base branch: $BASE_BRANCH"
           
-          # Check if PR branch can be fast-forward merged (meaning it's up-to-date)
-          if ! git merge-base --is-ancestor HEAD "origin/$BASE_BRANCH"; then
+          # Check if base branch HEAD is an ancestor of PR branch
+          if ! git merge-base --is-ancestor refs/remotes/origin/$BASE_BRANCH HEAD; then
             echo "::error::PR branch is not up-to-date with $BASE_BRANCH"
             echo "Please rebase your branch on the latest $BASE_BRANCH and resolve any conflicts"
             exit 1
