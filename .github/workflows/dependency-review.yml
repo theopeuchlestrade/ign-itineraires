@@ -19,7 +19,7 @@ jobs:
           echo "The workflow will become active when the repository is public or the GitHub plan changes."
 
   dependency-review:
-    if: ${{ github.event.repository.private == false && false }}
+    if: ${{ github.event.repository.private == false }}
     runs-on: ubuntu-latest
     timeout-minutes: 10
     steps:
