@@ -1,5 +1,5 @@
-/// Script to generate app icons with DSFR colors
-/// Run with: dart run tool/generate_icon.dart
+// Script to generate app icons with DSFR colors
+// Run with: dart run tool/generate_icon.dart
 
 import 'dart:io';
 import 'dart:math';
@@ -54,11 +54,17 @@ void main() {
   // iOS app icons
   _generateIOSIcons(image);
 
+  // ignore: avoid_print
   print('✅ All icons generated successfully with DSFR colors!');
+  // ignore: avoid_print
   print('   - App icon: assets/branding/map_icon.png (1024x1024)');
+  // ignore: avoid_print
   print('   - Web icons: Icon-192, Icon-512, Icon-maskable-*');
+  // ignore: avoid_print
   print('   - Favicon: web/favicon.png');
+  // ignore: avoid_print
   print('   - Android: ic_launcher.png for all densities');
+  // ignore: avoid_print
   print('   - iOS: All AppIcon sizes');
 }
 
