@@ -1,0 +1,42 @@
+name: Dependency vulnerability scan
+
+on:
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+  schedule:
+    - cron: "45 3 * * *"
+
+permissions:
+  actions: read
+  contents: read
+  security-events: write
+
+jobs:
+  scan-private:
+    if: github.repository_visibility != 'public'
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v7.0.0
+      - name: Scan the lockfile without SARIF upload
+        uses: google/osv-scanner-action/osv-scanner-action@v2.3.8
+        with:
+          scan-args: |-
+            --lockfile=pubspec.lock
+
+  scan-pr:
+    if: github.repository_visibility == 'public' && github.event_name == 'pull_request'
+    uses: google/osv-scanner-action/.github/workflows/osv-scanner-reusable-pr.yml@v2.3.8
+    with:
+      scan-args: |-
+        --lockfile=pubspec.lock
+
+  scan-scheduled:
+    if: >-
+      github.repository_visibility == 'public' &&
+      (github.event_name == 'schedule' || github.event_name == 'workflow_dispatch')
+    uses: google/osv-scanner-action/.github/workflows/osv-scanner-reusable.yml@v2.3.8
+    with:
+      scan-args: |-
+        --lockfile=pubspec.lock

@@ -1,0 +1,15 @@
+#!/bin/sh
+set -e
+
+# Docker-based commands can poison .dart_tool with /root/.pub-cache paths.
+# Regenerate package_config with the user-local cache when needed.
+if [ ! -f ".dart_tool/package_config.json" ] || grep -q "file:///root/.pub-cache" .dart_tool/package_config.json; then
+  echo "[ign_itineraires] flutter pub get --enforce-lockfile"
+  flutter pub get --enforce-lockfile
+fi
+
+echo "[ign_itineraires] dart format"
+dart format --output=none --set-exit-if-changed lib test integration_test test_driver tool
+
+echo "[ign_itineraires] flutter analyze"
+flutter analyze
