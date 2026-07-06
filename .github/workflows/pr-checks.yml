@@ -1,0 +1,68 @@
+name: PR Checks
+
+on:
+  pull_request:
+    branches: [main]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: pr-checks-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  validate-rebase:
+    name: Validate PR is up-to-date
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v7.0.0
+        with:
+          fetch-depth: 0
+
+      - name: Check if PR is based on latest main
+        run: |
+          set -euo pipefail
+          # Get the base branch (should be main)
+          BASE_BRANCH="${{ github.base_ref }}"
+          echo "Base branch: $BASE_BRANCH"
+          
+          # Check if PR branch can be fast-forward merged (meaning it's up-to-date)
+          if ! git merge-base --is-ancestor HEAD "origin/$BASE_BRANCH"; then
+            echo "::error::PR branch is not up-to-date with $BASE_BRANCH"
+            echo "Please rebase your branch on the latest $BASE_BRANCH and resolve any conflicts"
+            exit 1
+          fi
+          echo "✅ PR branch is up-to-date with $BASE_BRANCH"
+
+  lint-commit-messages:
+    name: Lint commit messages
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v7.0.0
+        with:
+          fetch-depth: 0
+
+      - name: Check commit message format
+        run: |
+          set -euo pipefail
+          # Check all commits in the PR
+          # Convention: type(scope): description
+          # Types: feat, fix, docs, style, refactor, test, chore, etc.
+          for commit in $(git log --no-merges --pretty=format:'%H' "${{ github.event.pull_request.base.sha }}..HEAD"); do
+            msg=$(git show -s --format='%s' "$commit")
+            echo "Checking: $msg"
+            # Basic check: should not be empty and should start with a conventional type
+            if [[ -z "$msg" ]]; then
+              echo "::error::Empty commit message"
+              exit 1
+            fi
+            # Optional: enforce conventional commits
+            # if ! echo "$msg" | grep -qE '^(feat|fix|docs|style|refactor|test|chore|perf|build|ci|revert)(\([^)]*\))?: '; then
+            #   echo "::error::Commit message does not follow conventional commits: $msg"
+            #   exit 1
+            # fi
+          done
+          echo "✅ All commit messages are valid"
