@@ -1,5 +1,5 @@
 <p align="center">
-  <img src=".github/assets/ign_itineraires_logo.svg" alt="IGN Itinéraires logo" width="180">
+  <img src=".github/assets/ign_itineraires_logo.svg" alt="IGN Itinéraires logo" width="120">
 </p>
 
 # IGN Itinéraires
