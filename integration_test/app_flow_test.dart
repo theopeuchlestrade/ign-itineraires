@@ -16,7 +16,9 @@ void main() {
   testWidgets('complete route planning and persistence flow', (tester) async {
     final harness = TestAppHarness();
     addTearDown(harness.dispose);
-    await tester.pumpWidget(IgnItinerairesApp(dependencies: harness.dependencies));
+    await tester.pumpWidget(
+      IgnItinerairesApp(dependencies: harness.dependencies),
+    );
     await _pumpUi(tester);
     if (!kIsWeb && defaultTargetPlatform == TargetPlatform.android) {
       await binding.convertFlutterSurfaceToImage();
@@ -61,7 +63,9 @@ void main() {
 
     await tester.pumpWidget(const SizedBox.shrink());
     await _pumpUi(tester);
-    await tester.pumpWidget(IgnItinerairesApp(dependencies: harness.dependencies));
+    await tester.pumpWidget(
+      IgnItinerairesApp(dependencies: harness.dependencies),
+    );
     await _pumpUi(tester);
     await tester.tap(find.byTooltip('Favoris'));
     await _pumpUi(tester);
@@ -81,7 +85,9 @@ void main() {
   testWidgets('navigation progresses, reroutes and arrives', (tester) async {
     final harness = TestAppHarness();
     addTearDown(harness.dispose);
-    await tester.pumpWidget(IgnItinerairesApp(dependencies: harness.dependencies));
+    await tester.pumpWidget(
+      IgnItinerairesApp(dependencies: harness.dependencies),
+    );
     await _pumpUi(tester);
 
     await _selectAddress(
@@ -178,7 +184,9 @@ void main() {
       ..error = const DeviceLocationException('Localisation refusée');
     final harness = TestAppHarness(location: location);
     addTearDown(harness.dispose);
-    await tester.pumpWidget(IgnItinerairesApp(dependencies: harness.dependencies));
+    await tester.pumpWidget(
+      IgnItinerairesApp(dependencies: harness.dependencies),
+    );
     await _pumpUi(tester);
 
     await _selectAddress(
@@ -213,7 +221,9 @@ void main() {
       );
     final harness = TestAppHarness(api: api);
     addTearDown(harness.dispose);
-    await tester.pumpWidget(IgnItinerairesApp(dependencies: harness.dependencies));
+    await tester.pumpWidget(
+      IgnItinerairesApp(dependencies: harness.dependencies),
+    );
     await _pumpUi(tester);
 
     await _selectAddress(

@@ -88,7 +88,9 @@ void main() {
   testWidgets('keyboard focus can move between address fields', (tester) async {
     final harness = TestAppHarness();
     addTearDown(harness.dispose);
-    await tester.pumpWidget(IgnItinerairesApp(dependencies: harness.dependencies));
+    await tester.pumpWidget(
+      IgnItinerairesApp(dependencies: harness.dependencies),
+    );
     await tester.pumpAndSettle();
 
     await tester.tap(find.byType(EditableText).first);
