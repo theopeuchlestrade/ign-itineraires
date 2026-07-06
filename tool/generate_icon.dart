@@ -35,7 +35,7 @@ void main() {
   final pngBytes = encodePng(image);
   File('assets/branding/map_icon.png').writeAsBytesSync(pngBytes);
   
-  // Also save smaller versions
+  // Web icons
   final icon192 = copyResize(image, width: 192, height: 192);
   File('web/icons/Icon-192.png').writeAsBytesSync(encodePng(icon192));
   File('web/icons/Icon-maskable-192.png').writeAsBytesSync(encodePng(icon192));
@@ -44,17 +44,22 @@ void main() {
   File('web/icons/Icon-512.png').writeAsBytesSync(encodePng(icon512));
   File('web/icons/Icon-maskable-512.png').writeAsBytesSync(encodePng(icon512));
   
-  // Save favicon (32x32)
+  // Favicon (32x32)
   final favicon32 = copyResize(image, width: 32, height: 32);
   File('web/favicon.png').writeAsBytesSync(encodePng(favicon32));
   
-  print('✅ Icons generated successfully with DSFR colors!');
-  print('   - assets/branding/map_icon.png (1024x1024)');
-  print('   - web/icons/Icon-192.png');
-  print('   - web/icons/Icon-512.png');
-  print('   - web/icons/Icon-maskable-192.png');
-  print('   - web/icons/Icon-maskable-512.png');
-  print('   - web/favicon.png');
+  // Android launcher icons
+  _generateAndroidIcons(image);
+  
+  // iOS app icons
+  _generateIOSIcons(image);
+  
+  print('✅ All icons generated successfully with DSFR colors!');
+  print('   - App icon: assets/branding/map_icon.png (1024x1024)');
+  print('   - Web icons: Icon-192, Icon-512, Icon-maskable-*');
+  print('   - Favicon: web/favicon.png');
+  print('   - Android: ic_launcher.png for all densities');
+  print('   - iOS: All AppIcon sizes');
 }
 
 void _drawThickLine(Image image, int x1, int y1, int x2, int y2, Color color, int thickness) {
@@ -81,6 +86,63 @@ void _drawFilledCircle(Image image, int cx, int cy, int radius, Color color) {
         }
       }
     }
+  }
+}
+
+void _generateAndroidIcons(Image source) {
+  final androidIcons = {
+    'mipmap-mdpi': 48,
+    'mipmap-hdpi': 72,
+    'mipmap-xhdpi': 96,
+    'mipmap-xxhdpi': 144,
+    'mipmap-xxxhdpi': 192,
+  };
+  
+  for (final entry in androidIcons.entries) {
+    final size = entry.value;
+    final resized = copyResize(source, width: size, height: size);
+    final dirPath = 'android/app/src/main/res/${entry.key}';
+    final filePath = '$dirPath/ic_launcher.png';
+    
+    // Create directory if it doesn't exist
+    Directory(dirPath).createSync(recursive: true);
+    File(filePath).writeAsBytesSync(encodePng(resized));
+  }
+}
+
+void _generateIOSIcons(Image source) {
+  final iosIcons = {
+    // 1x scale
+    'Icon-App-20x20@1x.png': 20,
+    'Icon-App-29x29@1x.png': 29,
+    'Icon-App-40x40@1x.png': 40,
+    'Icon-App-76x76@1x.png': 76,
+    'Icon-App-83.5x83.5@2x.png': 83,  // Will be scaled to 167x167@2x
+    // 2x scale
+    'Icon-App-20x20@2x.png': 40,
+    'Icon-App-29x29@2x.png': 58,
+    'Icon-App-40x40@2x.png': 80,
+    'Icon-App-60x60@2x.png': 60,
+    'Icon-App-76x76@2x.png': 152,
+    // 3x scale
+    'Icon-App-20x20@3x.png': 60,
+    'Icon-App-29x29@3x.png': 87,
+    'Icon-App-40x40@3x.png': 120,
+    'Icon-App-60x60@3x.png': 180,
+    'Icon-App-76x76@3x.png': 228,
+    // Large icons
+    'Icon-App-512x512@2x.png': 1024,
+    'Icon-App-1024x1024@1x.png': 1024,
+  };
+  
+  final basePath = 'ios/Runner/Assets.xcassets/AppIcon.appiconset';
+  Directory(basePath).createSync(recursive: true);
+  
+  for (final entry in iosIcons.entries) {
+    final size = entry.value;
+    final resized = copyResize(source, width: size, height: size);
+    final filePath = '$basePath/${entry.key}';
+    File(filePath).writeAsBytesSync(encodePng(resized));
   }
 }
 
