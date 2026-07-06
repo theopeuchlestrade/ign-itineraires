@@ -64,18 +64,19 @@ flutter:
   assets:
     - assets/fonts/OFL.txt
   fonts:
-    # Marianne font (DSFR - Système de Design de l'État)
-    # To enable, download Marianne font files from https://github.com/GouvernementFR/dsfr/tree/main/packages/dsfr/src/fonts
-    # and place them in assets/fonts/
-    # - family: Marianne
-    #   fonts:
-    #     - asset: assets/fonts/Marianne-Regular.ttf
-    #     - asset: assets/fonts/Marianne-Medium.ttf
-    #       weight: 500
-    #     - asset: assets/fonts/Marianne-Bold.ttf
-    #       weight: 700
-    #     - asset: assets/fonts/Marianne-Light.ttf
-    #       weight: 300
+    - family: Marianne
+      fonts:
+        - asset: assets/fonts/Marianne-Regular.otf
+        - asset: assets/fonts/Marianne-Medium.otf
+          weight: 500
+        - asset: assets/fonts/Marianne-Bold.otf
+          weight: 700
+        - asset: assets/fonts/Marianne-Light.otf
+          weight: 300
+        - asset: assets/fonts/Marianne-ExtraBold.otf
+          weight: 800
+        - asset: assets/fonts/Marianne-Thin.otf
+          weight: 100
     - family: Manrope
       fonts:
         - asset: assets/fonts/Manrope-VariableFont_wght.ttf

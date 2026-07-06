@@ -18,6 +18,16 @@ void main() {
       Uri.file('${Directory.current.path}/test/app_responsive_test.dart'),
       tolerance: 0.01,
     );
+    await (FontLoader('Marianne')..addFont(
+          rootBundle.load('assets/fonts/Marianne-Regular.otf'),
+        )..addFont(
+          rootBundle.load('assets/fonts/Marianne-Medium.otf'),
+        )..addFont(
+          rootBundle.load('assets/fonts/Marianne-Bold.otf'),
+        )..addFont(
+          rootBundle.load('assets/fonts/Marianne-Light.otf'),
+        ))
+        .load();
     await (FontLoader('Manrope')..addFont(
           rootBundle.load('assets/fonts/Manrope-VariableFont_wght.ttf'),
         ))
