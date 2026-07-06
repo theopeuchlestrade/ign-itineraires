@@ -15,7 +15,7 @@ and iOS and calls public French Géoplateforme services directly.
 
 The repository and Dart package are named `ign_itineraires`.
 
-Planned official web address: <https://map.fiestaaa.app>. Until the deployment
+Planned official web address: <https://ign-itineraires.app>. Until the deployment
 legal notice and privacy metadata are complete, this repository is the only
 officially published artifact.
 

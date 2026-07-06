@@ -383,7 +383,7 @@ class _PlannerPanel extends StatelessWidget {
         padding: const EdgeInsets.fromLTRB(20, 20, 20, 32),
         children: [
           Text(
-            'UNE APPLICATION FIESTAAA',
+            'IGN ITINÉRAIRES',
             style: theme.textTheme.labelSmall?.copyWith(
               color: CompanyPalette.primary,
               fontWeight: FontWeight.w800,

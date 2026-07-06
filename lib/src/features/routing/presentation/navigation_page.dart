@@ -442,9 +442,7 @@ class _LiveNavigationMapState extends State<_LiveNavigationMap> {
                       180,
                   child: Container(
                     decoration: BoxDecoration(
-                      gradient: CompanyPalette.buttonGradient(
-                        Theme.of(context).brightness,
-                      ),
+                      color: CompanyPalette.button(Theme.of(context).brightness),
                       shape: BoxShape.circle,
                       border: Border.all(color: Colors.white, width: 3),
                       boxShadow: const [
@@ -515,9 +513,7 @@ class _InstructionBanner extends StatelessWidget {
               width: 54,
               height: 54,
               decoration: BoxDecoration(
-                gradient: CompanyPalette.cardGradient(
-                  Theme.of(context).brightness,
-                ),
+                color: CompanyPalette.card(Theme.of(context).brightness),
                 borderRadius: BorderRadius.circular(17),
               ),
               child: Icon(
