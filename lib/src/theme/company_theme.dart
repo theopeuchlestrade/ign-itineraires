@@ -71,7 +71,7 @@ ThemeData buildCompanyTheme(Brightness brightness) {
   final baseTextTheme = ThemeData(
     useMaterial3: true,
     brightness: brightness,
-    fontFamily: 'Manrope', // TODO: Change to 'Marianne' once font files are added
+    fontFamily: 'Marianne',
   ).textTheme.apply(bodyColor: textColor, displayColor: textColor);
   final textTheme = baseTextTheme.copyWith(
     headlineSmall: baseTextTheme.headlineSmall?.copyWith(
@@ -131,7 +131,7 @@ ThemeData buildCompanyTheme(Brightness brightness) {
         padding: const EdgeInsets.symmetric(vertical: 15, horizontal: 18),
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
         textStyle: const TextStyle(
-          fontFamily: 'Manrope', // TODO: Change to 'Marianne' once font files are added
+          fontFamily: 'Marianne',
           fontWeight: FontWeight.w700,
         ),
       ),
