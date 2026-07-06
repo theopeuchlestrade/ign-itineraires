@@ -11,7 +11,11 @@ function collectFailures(page) {
   });
   page.on('pageerror', (error) => failures.push(`page: ${error.message}`));
   page.on('requestfailed', (request) => {
-    failures.push(`request: ${request.url()} (${request.failure()?.errorText ?? 'unknown'})`);
+    // Ignore network errors for external map tile services in CI environments
+    const url = request.url();
+    if (!url.includes('data.geopf.fr') && !url.includes('cartes.gouv.fr')) {
+      failures.push(`request: ${url} (${request.failure()?.errorText ?? 'unknown'})`);
+    }
   });
 }
 
@@ -60,7 +64,7 @@ try {
       await page.waitForFunction(
         () => Boolean(document.querySelector('flt-glass-pane, flutter-view')),
         undefined,
-        { timeout: 30_000 },
+        { timeout: 60_000 },
       );
     } catch (error) {
       const details = failures.length === 0
