@@ -101,7 +101,7 @@ jobs:
           --browser-name=chrome
           --timeout=120
           --screenshot=build/test-screenshots
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v7
         if: always()
         with:
           name: web-integration-screenshots
@@ -211,7 +211,7 @@ jobs:
           arch: x86_64
           profile: pixel_2
           script: flutter test integration_test/app_flow_test.dart -d emulator-5554
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v7
         if: always()
         with:
           name: android-api-24-screenshots
