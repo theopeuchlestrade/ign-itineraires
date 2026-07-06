@@ -1,111 +1,77 @@
 import 'package:flutter/material.dart';
 
 class CompanyPalette {
-  static const primary = Color(0xFF6B4DF5);
-  static const secondary = Color(0xFF4FD3F3);
-  static const accent = Color(0xFF8C7BFF);
-  static const lightText = Color(0xFF0F172A);
-  static const darkText = Color(0xFFE2E8F0);
-  static const lightSurface = Color(0xFFF6F7FF);
-  static const darkSurface = Color(0xFF0B0F1A);
-  static const darkSurfaceRaised = Color(0xFF141B2D);
-
-  static const lightBackgroundGradient = LinearGradient(
-    colors: [Color(0xFFF6F7FF), Color(0xFFE8ECFF)],
-    begin: Alignment.topLeft,
-    end: Alignment.bottomRight,
-  );
-
-  static const darkBackgroundGradient = LinearGradient(
-    colors: [Color(0xFF0B0F1A), Color(0xFF111827)],
-    begin: Alignment.topLeft,
-    end: Alignment.bottomRight,
-  );
-
-  static const lightCardGradient = LinearGradient(
-    colors: [Color(0xFF7D5BFF), Color(0xFF4F7CFF)],
-    begin: Alignment.topLeft,
-    end: Alignment.bottomRight,
-  );
-
-  static const darkCardGradient = LinearGradient(
-    colors: [Color(0xFF2C2A6F), Color(0xFF21437E)],
-    begin: Alignment.topLeft,
-    end: Alignment.bottomRight,
-  );
-
-  static const lightButtonGradient = LinearGradient(
-    colors: [Color(0xFF5D5FEF), Color(0xFF4FD3F3)],
-    begin: Alignment.topLeft,
-    end: Alignment.bottomRight,
-  );
-
-  static const darkButtonGradient = LinearGradient(
-    colors: [Color(0xFF5D5FEF), Color(0xFF2FA7C9)],
-    begin: Alignment.topLeft,
-    end: Alignment.bottomRight,
-  );
-
-  static LinearGradient backgroundGradient(Brightness brightness) =>
-      brightness == Brightness.dark
-      ? darkBackgroundGradient
-      : lightBackgroundGradient;
-
-  static LinearGradient cardGradient(Brightness brightness) =>
-      brightness == Brightness.dark ? darkCardGradient : lightCardGradient;
-
-  static LinearGradient buttonGradient(Brightness brightness) =>
-      brightness == Brightness.dark ? darkButtonGradient : lightButtonGradient;
+  // DSFR Colors - Système de Design de l'État
+  static const primary = Color(0xFF000091); // Bleu Marianne
+  static const secondary = Color(0xFFE1000F); // Rouge Marianne
+  static const accent = Color(0xFF6A6A6A); // Gris G500
+  
+  // Text colors
+  static const lightText = Color(0xFF000000); // Noir pour le mode clair
+  static const darkText = Color(0xFFFFFFFF); // Blanc pour le mode sombre
+  
+  // Surface colors
+  static const lightSurface = Color(0xFFFFFFFF); // Fond blanc
+  static const darkSurface = Color(0xFF1E1E1E); // Fond sombre
+  static const darkSurfaceRaised = Color(0xFF2D2D2D); // Surface élevée sombre
+  
+  // Background colors (solid, no gradients per DSFR)
+  static const lightBackground = Color(0xFFFFFFFF); // Fond blanc
+  static const darkBackground = Color(0xFF121212); // Fond sombre
+  
+  // Card colors (solid colors)
+  static const lightCard = Color(0xFF000091); // Bleu Marianne pour les cartes
+  static const darkCard = Color(0xFF1A1A5C); // Bleu foncé pour les cartes sombres
+  
+  // Button colors (solid colors)
+  static const lightButton = Color(0xFF000091); // Bleu Marianne pour les boutons
+  static const darkButton = Color(0xFFE1000F); // Rouge Marianne pour les boutons sombres
+  
+  // Utility methods
+  static Color background(Brightness brightness) =>
+      brightness == Brightness.dark ? darkBackground : lightBackground;
+  
+  static Color card(Brightness brightness) =>
+      brightness == Brightness.dark ? darkCard : lightCard;
+  
+  static Color button(Brightness brightness) =>
+      brightness == Brightness.dark ? darkButton : lightButton;
 }
 
 ThemeData buildCompanyTheme(Brightness brightness) {
   final isDark = brightness == Brightness.dark;
   final textColor = isDark ? CompanyPalette.darkText : CompanyPalette.lightText;
-  final surface = isDark ? CompanyPalette.darkSurfaceRaised : Colors.white;
-  final mutedText = textColor.withValues(alpha: isDark ? 0.72 : 0.70);
-  final scheme =
-      ColorScheme.fromSeed(
-        seedColor: CompanyPalette.primary,
-        brightness: brightness,
-      ).copyWith(
-        primary: CompanyPalette.primary,
-        secondary: CompanyPalette.secondary,
-        tertiary: CompanyPalette.accent,
-        surface: surface,
-        surfaceContainerLowest: isDark
-            ? CompanyPalette.darkSurface
-            : CompanyPalette.lightSurface,
-        surfaceContainerLow: isDark
-            ? const Color(0xFF101726)
-            : const Color(0xFFFBFBFF),
-        surfaceContainerHigh: isDark
-            ? const Color(0xFF182236)
-            : const Color(0xFFEFF2FF),
-        surfaceContainerHighest: isDark
-            ? const Color(0xFF202A40)
-            : const Color(0xFFE5EBFB),
-        onSurface: textColor,
-        onSurfaceVariant: mutedText,
-        onPrimary: Colors.white,
-        outline: isDark ? const Color(0xFF45506A) : const Color(0xFFD3DAEE),
-        outlineVariant: isDark
-            ? const Color(0xFF303A50)
-            : const Color(0xFFE3E8F7),
-        primaryContainer: isDark
-            ? const Color(0xFF241F52)
-            : const Color(0xFFE8E3FF),
-        secondaryContainer: isDark
-            ? const Color(0xFF123446)
-            : const Color(0xFFDDF9FF),
-        error: isDark ? const Color(0xFFF87171) : const Color(0xFFB91C1C),
-        errorContainer: isDark
-            ? const Color(0xFF4B1E22)
-            : const Color(0xFFFEE2E2),
-      );
+  final surface = isDark ? CompanyPalette.darkSurfaceRaised : CompanyPalette.lightSurface;
+  final mutedText = textColor.withValues(alpha: isDark ? 0.72 : 0.60);
+  
+  // DSFR Color Scheme
+  final scheme = ColorScheme.fromSeed(
+    seedColor: CompanyPalette.primary,
+    brightness: brightness,
+    primary: CompanyPalette.primary, // Bleu Marianne #000091
+    secondary: CompanyPalette.secondary, // Rouge Marianne #E1000F
+    tertiary: CompanyPalette.accent, // Gris G500 #6A6A6A
+    surface: surface,
+    onSurface: textColor,
+    onSurfaceVariant: mutedText,
+    onPrimary: Colors.white,
+    onSecondary: Colors.white,
+    onTertiary: Colors.white,
+    error: CompanyPalette.secondary, // Rouge Marianne pour les erreurs
+    onError: Colors.white,
+    surfaceContainerLowest: isDark ? CompanyPalette.darkSurface : CompanyPalette.lightSurface,
+    surfaceContainerLow: isDark ? const Color(0xFF2D2D2D) : const Color(0xFFF5F5F5),
+    surfaceContainerHigh: isDark ? const Color(0xFF3D3D3D) : const Color(0xFFEEEEEE),
+    surfaceContainerHighest: isDark ? const Color(0xFF4D4D4D) : const Color(0xFFE0E0E0),
+    outline: isDark ? const Color(0xFF6A6A6A) : const Color(0xFF6A6A6A),
+    outlineVariant: isDark ? const Color(0xFF4A4A4A) : const Color(0xFFB0B0B0),
+    primaryContainer: isDark ? const Color(0xFF1A1A5C) : const Color(0xFFE3F2FD),
+    secondaryContainer: isDark ? const Color(0xFF7C0000) : const Color(0xFFFFEBEE),
+  ).copyWith();
   final baseTextTheme = ThemeData(
     useMaterial3: true,
     brightness: brightness,
-    fontFamily: 'Manrope',
+    fontFamily: 'Manrope', // TODO: Change to 'Marianne' once font files are added
   ).textTheme.apply(bodyColor: textColor, displayColor: textColor);
   final textTheme = baseTextTheme.copyWith(
     headlineSmall: baseTextTheme.headlineSmall?.copyWith(
@@ -126,8 +92,8 @@ ThemeData buildCompanyTheme(Brightness brightness) {
     colorScheme: scheme,
     textTheme: textTheme,
     scaffoldBackgroundColor: isDark
-        ? CompanyPalette.darkSurface
-        : CompanyPalette.lightSurface,
+        ? CompanyPalette.darkBackground
+        : CompanyPalette.lightBackground,
     appBarTheme: AppBarTheme(
       backgroundColor: surface.withValues(alpha: isDark ? 0.92 : 0.90),
       surfaceTintColor: surface,
@@ -165,7 +131,7 @@ ThemeData buildCompanyTheme(Brightness brightness) {
         padding: const EdgeInsets.symmetric(vertical: 15, horizontal: 18),
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
         textStyle: const TextStyle(
-          fontFamily: 'Manrope',
+          fontFamily: 'Manrope', // TODO: Change to 'Marianne' once font files are added
           fontWeight: FontWeight.w700,
         ),
       ),
@@ -196,29 +162,11 @@ class CompanyBackground extends StatelessWidget {
     final brightness = Theme.of(context).brightness;
     return DecoratedBox(
       decoration: BoxDecoration(
-        gradient: CompanyPalette.backgroundGradient(brightness),
+        color: CompanyPalette.background(brightness),
       ),
       child: Stack(
         children: [
-          Positioned(
-            top: -70,
-            right: -50,
-            child: _Glow(
-              color: CompanyPalette.primary.withValues(
-                alpha: brightness == Brightness.dark ? 0.20 : 0.14,
-              ),
-            ),
-          ),
-          Positioned(
-            bottom: -90,
-            left: -70,
-            child: _Glow(
-              size: 220,
-              color: CompanyPalette.secondary.withValues(
-                alpha: brightness == Brightness.dark ? 0.22 : 0.18,
-              ),
-            ),
-          ),
+          // Removed glow effects for DSFR compliance - using solid colors
           child,
         ],
       ),
@@ -233,11 +181,12 @@ class CompanyLogoMark extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final brightness = Theme.of(context).brightness;
     return Container(
       width: size,
       height: size,
       decoration: BoxDecoration(
-        gradient: CompanyPalette.cardGradient(Theme.of(context).brightness),
+        color: CompanyPalette.card(brightness),
         borderRadius: BorderRadius.circular(size * 0.30),
         boxShadow: [
           BoxShadow(
@@ -267,13 +216,11 @@ class CompanyGradientButton extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final enabled = onPressed != null;
+    final brightness = Theme.of(context).brightness;
     return DecoratedBox(
       decoration: BoxDecoration(
-        gradient: enabled
-            ? CompanyPalette.buttonGradient(Theme.of(context).brightness)
-            : null,
         color: enabled
-            ? null
+            ? CompanyPalette.button(brightness)
             : Theme.of(context).colorScheme.surfaceContainerHighest,
         borderRadius: BorderRadius.circular(16),
         boxShadow: enabled

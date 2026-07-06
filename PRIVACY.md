@@ -14,7 +14,7 @@ unofficial and is not affiliated with IGN or the French administration.
 | `data.geopf.fr/navigation/itineraire` | start and end coordinates, mode, and calculation options | initial calculation and off-route recalculation |
 | `data.geopf.fr/wmts` | visible tile coordinates | map display and movement |
 | `www.google.com`, `maps.apple.com`, or an Android navigation application | start, end, and mode | only after an explicit external-navigation action |
-| `map.fiestaaa.app/legal.html` | no route data; ordinary connection metadata only | when the legal notice is opened from a native build |
+| `ign-itineraires.app/legal.html` | no route data; ordinary connection metadata only | when the legal notice is opened from a native build |
 | system or browser voice engine | instruction text | only when voice is enabled; local or remote processing depends on the installed engine |
 
 As with any Internet connection, the contacted service also receives the IP address and technical metadata necessary for the request. The application does not transmit GPS position to a IGN Itinéraires application API.
@@ -43,7 +43,7 @@ kept by IGN Itinéraires.
 
 ## Official Web Hosting Logs
 
-The official static site at `map.fiestaaa.app` is served through a reverse proxy
+The official static site at `ign-itineraires.app` is served through a reverse proxy
 and Nginx. These systems may process the IP address, request date, user agent,
 requested asset path, response status, and security events to operate and
 protect the service. Search text, route coordinates, GPS fixes, favorites, and

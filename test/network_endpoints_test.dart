@@ -34,12 +34,12 @@ void main() {
     };
 
     expect(hosts, NetworkEndpoints.explicitExternalNavigationHosts);
-    expect(NetworkEndpoints.explicitPolicyHosts, {'map.fiestaaa.app'});
+    expect(NetworkEndpoints.explicitPolicyHosts, {'ign-itineraires.app'});
     expect(NetworkEndpoints.registeredHosts, {
       'data.geopf.fr',
       'www.google.com',
       'maps.apple.com',
-      'map.fiestaaa.app',
+      'ign-itineraires.app',
     });
   });
 }
