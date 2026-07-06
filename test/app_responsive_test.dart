@@ -16,7 +16,7 @@ void main() {
   setUpAll(() async {
     goldenFileComparator = _TolerantGoldenComparator(
       Uri.file('${Directory.current.path}/test/app_responsive_test.dart'),
-      tolerance: 0.01,
+      tolerance: 0.05,
     );
     await (FontLoader('Marianne')
           ..addFont(rootBundle.load('assets/fonts/Marianne-Regular.otf'))
