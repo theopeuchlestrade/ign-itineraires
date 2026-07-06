@@ -43,6 +43,7 @@ jobs:
 
   quality:
     name: Quality, tests and coverage
+    if: github.event_name == 'pull_request' || github.event_name == 'workflow_dispatch'
     runs-on: ubuntu-latest
     timeout-minutes: 30
     steps:
@@ -62,6 +63,7 @@ jobs:
 
   linux-goldens:
     name: Linux golden tests
+    if: github.event_name == 'pull_request' || github.event_name == 'workflow_dispatch'
     runs-on: ubuntu-latest
     timeout-minutes: 20
     steps:
@@ -76,7 +78,7 @@ jobs:
 
   web-integration:
     name: Chrome integration flow
-    if: github.event_name != 'schedule'
+    if: github.event_name == 'pull_request' || github.event_name == 'workflow_dispatch'
     runs-on: ubuntu-latest
     timeout-minutes: 30
     steps:
@@ -110,7 +112,7 @@ jobs:
 
   android-build:
     name: Android build
-    if: github.event_name != 'schedule'
+    if: github.event_name == 'pull_request' || github.event_name == 'workflow_dispatch'
     runs-on: ubuntu-latest
     timeout-minutes: 35
     steps:
@@ -125,7 +127,7 @@ jobs:
 
   ios-build:
     name: iOS simulator build
-    if: github.event_name != 'schedule'
+    if: github.event_name == 'pull_request' || github.event_name == 'workflow_dispatch'
     runs-on: macos-15
     timeout-minutes: 45
     steps:
@@ -140,7 +142,7 @@ jobs:
 
   container:
     name: Production web container
-    if: github.event_name != 'schedule'
+    if: github.event_name == 'pull_request' || github.event_name == 'workflow_dispatch'
     runs-on: ubuntu-latest
     timeout-minutes: 40
     steps:
