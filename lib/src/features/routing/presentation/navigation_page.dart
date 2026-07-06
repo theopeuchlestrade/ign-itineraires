@@ -442,7 +442,9 @@ class _LiveNavigationMapState extends State<_LiveNavigationMap> {
                       180,
                   child: Container(
                     decoration: BoxDecoration(
-                      color: CompanyPalette.button(Theme.of(context).brightness),
+                      color: CompanyPalette.button(
+                        Theme.of(context).brightness,
+                      ),
                       shape: BoxShape.circle,
                       border: Border.all(color: Colors.white, width: 3),
                       boxShadow: const [
