@@ -87,7 +87,7 @@ jobs:
           flutter-version: ${{ env.FLUTTER_VERSION }}
           cache: true
       - uses: browser-actions/setup-chrome@v2
-      - uses: nanasess/setup-chromedriver@v2
+      - uses: nanasess/setup-chromedriver@v3
       - run: flutter pub get --enforce-lockfile
       - name: Start ChromeDriver
         run: chromedriver --port=4444 &
