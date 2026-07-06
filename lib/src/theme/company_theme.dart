@@ -276,26 +276,3 @@ class CompanyGradientButton extends StatelessWidget {
     );
   }
 }
-
-class _Glow extends StatelessWidget {
-  const _Glow({required this.color, this.size = 180});
-
-  final Color color;
-  final double size;
-
-  @override
-  Widget build(BuildContext context) {
-    return IgnorePointer(
-      child: Container(
-        width: size,
-        height: size,
-        decoration: BoxDecoration(
-          shape: BoxShape.circle,
-          gradient: RadialGradient(
-            colors: [color, color.withValues(alpha: 0.01)],
-          ),
-        ),
-      ),
-    );
-  }
-}
