@@ -5,35 +5,41 @@ class CompanyPalette {
   static const primary = Color(0xFF000091); // Bleu Marianne
   static const secondary = Color(0xFFE1000F); // Rouge Marianne
   static const accent = Color(0xFF6A6A6A); // Gris G500
-  
+
   // Text colors
   static const lightText = Color(0xFF000000); // Noir pour le mode clair
   static const darkText = Color(0xFFFFFFFF); // Blanc pour le mode sombre
-  
+
   // Surface colors
   static const lightSurface = Color(0xFFFFFFFF); // Fond blanc
   static const darkSurface = Color(0xFF1E1E1E); // Fond sombre
   static const darkSurfaceRaised = Color(0xFF2D2D2D); // Surface élevée sombre
-  
+
   // Background colors (solid, no gradients per DSFR)
   static const lightBackground = Color(0xFFFFFFFF); // Fond blanc
   static const darkBackground = Color(0xFF121212); // Fond sombre
-  
+
   // Card colors (solid colors)
   static const lightCard = Color(0xFF000091); // Bleu Marianne pour les cartes
-  static const darkCard = Color(0xFF1A1A5C); // Bleu foncé pour les cartes sombres
-  
+  static const darkCard = Color(
+    0xFF1A1A5C,
+  ); // Bleu foncé pour les cartes sombres
+
   // Button colors (solid colors)
-  static const lightButton = Color(0xFF000091); // Bleu Marianne pour les boutons
-  static const darkButton = Color(0xFFE1000F); // Rouge Marianne pour les boutons sombres
-  
+  static const lightButton = Color(
+    0xFF000091,
+  ); // Bleu Marianne pour les boutons
+  static const darkButton = Color(
+    0xFFE1000F,
+  ); // Rouge Marianne pour les boutons sombres
+
   // Utility methods
   static Color background(Brightness brightness) =>
       brightness == Brightness.dark ? darkBackground : lightBackground;
-  
+
   static Color card(Brightness brightness) =>
       brightness == Brightness.dark ? darkCard : lightCard;
-  
+
   static Color button(Brightness brightness) =>
       brightness == Brightness.dark ? darkButton : lightButton;
 }
@@ -41,9 +47,11 @@ class CompanyPalette {
 ThemeData buildCompanyTheme(Brightness brightness) {
   final isDark = brightness == Brightness.dark;
   final textColor = isDark ? CompanyPalette.darkText : CompanyPalette.lightText;
-  final surface = isDark ? CompanyPalette.darkSurfaceRaised : CompanyPalette.lightSurface;
+  final surface = isDark
+      ? CompanyPalette.darkSurfaceRaised
+      : CompanyPalette.lightSurface;
   final mutedText = textColor.withValues(alpha: isDark ? 0.72 : 0.60);
-  
+
   // DSFR Color Scheme
   final scheme = ColorScheme.fromSeed(
     seedColor: CompanyPalette.primary,
@@ -59,14 +67,26 @@ ThemeData buildCompanyTheme(Brightness brightness) {
     onTertiary: Colors.white,
     error: CompanyPalette.secondary, // Rouge Marianne pour les erreurs
     onError: Colors.white,
-    surfaceContainerLowest: isDark ? CompanyPalette.darkSurface : CompanyPalette.lightSurface,
-    surfaceContainerLow: isDark ? const Color(0xFF2D2D2D) : const Color(0xFFF5F5F5),
-    surfaceContainerHigh: isDark ? const Color(0xFF3D3D3D) : const Color(0xFFEEEEEE),
-    surfaceContainerHighest: isDark ? const Color(0xFF4D4D4D) : const Color(0xFFE0E0E0),
+    surfaceContainerLowest: isDark
+        ? CompanyPalette.darkSurface
+        : CompanyPalette.lightSurface,
+    surfaceContainerLow: isDark
+        ? const Color(0xFF2D2D2D)
+        : const Color(0xFFF5F5F5),
+    surfaceContainerHigh: isDark
+        ? const Color(0xFF3D3D3D)
+        : const Color(0xFFEEEEEE),
+    surfaceContainerHighest: isDark
+        ? const Color(0xFF4D4D4D)
+        : const Color(0xFFE0E0E0),
     outline: isDark ? const Color(0xFF6A6A6A) : const Color(0xFF6A6A6A),
     outlineVariant: isDark ? const Color(0xFF4A4A4A) : const Color(0xFFB0B0B0),
-    primaryContainer: isDark ? const Color(0xFF1A1A5C) : const Color(0xFFE3F2FD),
-    secondaryContainer: isDark ? const Color(0xFF7C0000) : const Color(0xFFFFEBEE),
+    primaryContainer: isDark
+        ? const Color(0xFF1A1A5C)
+        : const Color(0xFFE3F2FD),
+    secondaryContainer: isDark
+        ? const Color(0xFF7C0000)
+        : const Color(0xFFFFEBEE),
   ).copyWith();
   final baseTextTheme = ThemeData(
     useMaterial3: true,
@@ -161,9 +181,7 @@ class CompanyBackground extends StatelessWidget {
   Widget build(BuildContext context) {
     final brightness = Theme.of(context).brightness;
     return DecoratedBox(
-      decoration: BoxDecoration(
-        color: CompanyPalette.background(brightness),
-      ),
+      decoration: BoxDecoration(color: CompanyPalette.background(brightness)),
       child: Stack(
         children: [
           // Removed glow effects for DSFR compliance - using solid colors
