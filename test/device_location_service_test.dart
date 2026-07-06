@@ -1,0 +1,163 @@
+import 'package:flutter_test/flutter_test.dart';
+import 'package:geolocator_platform_interface/geolocator_platform_interface.dart';
+import 'package:ign_itineraires/src/features/routing/data/device_location_service.dart';
+import 'package:ign_itineraires/src/features/routing/domain/navigation_models.dart';
+import 'package:ign_itineraires/src/features/routing/domain/routing_models.dart';
+
+void main() {
+  late GeolocatorPlatform original;
+  late _FakeGeolocator platform;
+  late DeviceLocationService service;
+
+  setUp(() {
+    original = GeolocatorPlatform.instance;
+    platform = _FakeGeolocator();
+    GeolocatorPlatform.instance = platform;
+    service = DeviceLocationService();
+  });
+
+  tearDown(() {
+    GeolocatorPlatform.instance = original;
+  });
+
+  test('reports when location services are disabled', () async {
+    platform.serviceEnabled = false;
+
+    expect(
+      service.currentPosition,
+      throwsA(
+        isA<DeviceLocationException>().having(
+          (error) => error.message,
+          'message',
+          contains('Activez la localisation'),
+        ),
+      ),
+    );
+  });
+
+  test('reports denied and permanently denied permissions', () async {
+    platform.permission = LocationPermission.denied;
+    platform.requestedPermission = LocationPermission.denied;
+
+    expect(service.currentPosition, throwsA(isA<DeviceLocationException>()));
+
+    platform.permission = LocationPermission.deniedForever;
+
+    expect(
+      service.currentPosition,
+      throwsA(
+        isA<DeviceLocationException>().having(
+          (error) => error.permanentlyDenied,
+          'permanentlyDenied',
+          isTrue,
+        ),
+      ),
+    );
+  });
+
+  test('requests permission then maps the current position', () async {
+    platform.permission = LocationPermission.denied;
+    platform.requestedPermission = LocationPermission.whileInUse;
+
+    final position = await service.currentPosition();
+
+    expect(position.point.latitude, 48.8566);
+    expect(position.point.longitude, 2.3522);
+    expect(position.accuracyMeters, 4);
+    expect(position.headingAccuracyDegrees, 3);
+    expect(position.speedAccuracyMetersPerSecond, 1);
+    expect(platform.requestCalls, 1);
+  });
+
+  test('requests navigation-grade accuracy for active guidance', () async {
+    await service.currentPosition(navigationMode: TravelMode.car);
+
+    expect(platform.lastSettings?.accuracy, LocationAccuracy.bestForNavigation);
+    expect(platform.lastSettings?.timeLimit, const Duration(seconds: 20));
+  });
+
+  test('maps reduced operating-system location precision', () async {
+    platform.accuracyStatus = LocationAccuracyStatus.reduced;
+
+    final position = await service.currentPosition();
+
+    expect(position.precision, LocationPrecision.reduced);
+  });
+
+  test('uses distinct distance filters for walking and driving', () async {
+    service.watchPositions(TravelMode.pedestrian).listen((_) {});
+    expect(platform.lastSettings?.distanceFilter, 3);
+
+    service.watchPositions(TravelMode.car).listen((_) {});
+    expect(platform.lastSettings?.distanceFilter, 5);
+  });
+
+  test('turns platform position failures into a domain error', () async {
+    platform.positionError = Exception('sensor unavailable');
+
+    expect(
+      service.currentPosition,
+      throwsA(
+        isA<DeviceLocationException>().having(
+          (error) => error.message,
+          'message',
+          contains('n’a pas pu être déterminée'),
+        ),
+      ),
+    );
+  });
+}
+
+class _FakeGeolocator extends GeolocatorPlatform {
+  bool serviceEnabled = true;
+  LocationPermission permission = LocationPermission.whileInUse;
+  LocationPermission requestedPermission = LocationPermission.whileInUse;
+  Object? positionError;
+  int requestCalls = 0;
+  LocationSettings? lastSettings;
+  LocationAccuracyStatus accuracyStatus = LocationAccuracyStatus.precise;
+
+  @override
+  Future<bool> isLocationServiceEnabled() async => serviceEnabled;
+
+  @override
+  Future<LocationPermission> checkPermission() async => permission;
+
+  @override
+  Future<LocationPermission> requestPermission() async {
+    requestCalls++;
+    return requestedPermission;
+  }
+
+  @override
+  Future<LocationAccuracyStatus> getLocationAccuracy() async => accuracyStatus;
+
+  @override
+  Future<Position> getCurrentPosition({
+    LocationSettings? locationSettings,
+  }) async {
+    lastSettings = locationSettings;
+    final error = positionError;
+    if (error != null) throw error;
+    return _position;
+  }
+
+  @override
+  Stream<Position> getPositionStream({LocationSettings? locationSettings}) {
+    lastSettings = locationSettings;
+    return Stream.value(_position);
+  }
+
+  static final Position _position = Position(
+    latitude: 48.8566,
+    longitude: 2.3522,
+    timestamp: DateTime.now(),
+    accuracy: 4,
+    altitude: 35,
+    altitudeAccuracy: 2,
+    heading: 90,
+    headingAccuracy: 3,
+    speed: 2,
+    speedAccuracy: 1,
+  );
+}

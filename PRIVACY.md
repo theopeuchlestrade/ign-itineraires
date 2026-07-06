@@ -1,0 +1,84 @@
+# Privacy
+
+IGN Itinéraires is designed to work without accounts, advertisements, analytics
+tools, or an application API operated by IGN Itinéraires.
+
+This document describes the data flows of version `1.0.0`. The project is
+unofficial and is not affiliated with IGN or the French administration.
+
+## Data Sent Over the Network
+
+| Service | Data | When |
+| --- | --- | --- |
+| `data.geopf.fr/geocodage/completion/` | text entered in search | after three characters, with debounce |
+| `data.geopf.fr/navigation/itineraire` | start and end coordinates, mode, and calculation options | initial calculation and off-route recalculation |
+| `data.geopf.fr/wmts` | visible tile coordinates | map display and movement |
+| `www.google.com`, `maps.apple.com`, or an Android navigation application | start, end, and mode | only after an explicit external-navigation action |
+| `map.fiestaaa.app/legal.html` | no route data; ordinary connection metadata only | when the legal notice is opened from a native build |
+| system or browser voice engine | instruction text | only when voice is enabled; local or remote processing depends on the installed engine |
+
+As with any Internet connection, the contacted service also receives the IP address and technical metadata necessary for the request. The application does not transmit GPS position to a IGN Itinéraires application API.
+
+Continuous GPS data is processed locally. A position is sent to the
+Geoplatform to calculate the actual departure when guidance starts and when an
+off-route recalculation is necessary.
+
+Search does not transmit the current position to rank results. Route calculation uses a `POST` request so that coordinates do not appear in the URL.
+
+## Data Stored on Device
+
+- Favorite destinations;
+- Voice activation preference;
+- History activation;
+- Maximum ten recent trips if history is enabled.
+
+History is disabled by default. Disabling it or using the clear-history action
+deletes locally stored trips.
+
+Flutter uses `shared_preferences`: application storage on Android and iOS, and browser storage on the web. This data is not synchronized.
+
+Deleting the application, clearing its storage, or clearing the website data
+also deletes these values. No server-side copy of favorites or route history is
+kept by IGN Itinéraires.
+
+## Official Web Hosting Logs
+
+The official static site at `map.fiestaaa.app` is served through a reverse proxy
+and Nginx. These systems may process the IP address, request date, user agent,
+requested asset path, response status, and security events to operate and
+protect the service. Search text, route coordinates, GPS fixes, favorites, and
+route history are not sent to this static host.
+
+REPLACE_BEFORE_RELEASE — document the legal basis, recipients, exact retention
+period, public privacy contact, and procedures for exercising data rights before
+the official deployment is published.
+
+## Fonts and Resources
+
+The Manrope font is included in the application. It is not downloaded from Google Fonts at startup. Its OFL license is provided in `assets/fonts/OFL.txt`.
+
+## Permissions
+
+Location is requested only while the application is in use. No background
+location permission is requested. When the application enters the background,
+GPS tracking, voice, and the screen wake lock are suspended.
+
+On Android and recent iOS versions, users can grant approximate rather than
+precise location. Approximate fixes can still select a rough departure, but
+built-in mobile guidance is suspended until precise location is available.
+
+## Application Endpoint Registry
+
+Application-owned HTTP traffic is built only for `data.geopf.fr`. Google and
+Apple URLs are created only after an explicit external-navigation action, and
+the planned official Map host only when a native user opens the legal notice.
+The endpoint registry is centralized in the source code and covered by tests.
+On the official web deployment, the Content Security Policy enforces the
+corresponding network boundary. An installed system or browser speech engine
+can process spoken instruction text locally or remotely.
+
+## Development Guarantees
+
+Any new network dependency, audience measurement, or data collection must be
+documented here and reviewed before release. The project aims to keep a short,
+testable domain list and not to integrate trackers by default.
