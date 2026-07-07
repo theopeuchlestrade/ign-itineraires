@@ -59,7 +59,8 @@ jobs:
         uses: actions/github-script@v7
         with:
           script: |
-            const { prAuthor, approvals } = ${{ steps.get-data.outputs.result }};
+            const prAuthor = ${{ steps.get-data.outputs.prAuthor }};
+            const approvals = ${{ steps.get-data.outputs.approvals }};
             const requiredOwner = 'theopeuchlestrade';
             
             // No approvals found
@@ -115,8 +116,9 @@ jobs:
         uses: actions/github-script@v7
         with:
           script: |
-            const { valid, message } = ${{ steps.validate.outputs.result }};
-            const { prHeadSha } = ${{ steps.get-data.outputs.result }};
+            const valid = ${{ steps.validate.outputs.valid }};
+            const message = ${{ steps.validate.outputs.message }};
+            const prHeadSha = ${{ steps.get-data.outputs.prHeadSha }};
             
             await github.rest.repos.createCommitStatus({
               owner: context.repo.owner,
