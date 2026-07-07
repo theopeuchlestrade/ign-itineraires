@@ -18,8 +18,7 @@ jobs:
   check-owner-approval:
     runs-on: ubuntu-latest
     steps:
-      - name: Get PR and reviews
-        id: get-data
+      - name: Run validation and create status check
         uses: actions/github-script@v7
         with:
           script: |
@@ -32,6 +31,7 @@ jobs:
             const prNumber = pr.number;
             const headSha = pr.head.sha;
             const prAuthor = pr.user.login;
+            const requiredOwner = 'theopeuchlestrade';
             
             // Get all reviews for this PR
             const { data: reviews } = await github.rest.pulls.listReviews({
@@ -44,23 +44,6 @@ jobs:
             const approvers = reviews
               .filter(review => review.state === 'APPROVED')
               .map(review => review.user.login);
-            
-            return {
-              prAuthor: prAuthor,
-              prNumber: prNumber,
-              prHeadSha: headSha,
-              approvers: approvers
-            };
-      
-      - name: Validate approvals and publish status
-        id: validate-and-publish
-        uses: actions/github-script@v7
-        with:
-          script: |
-            const prAuthor = ${{ steps.get-data.outputs.prAuthor }};
-            const approvers = ${{ steps.get-data.outputs.approvers }};
-            const prHeadSha = ${{ steps.get-data.outputs.prHeadSha }};
-            const requiredOwner = 'theopeuchlestrade';
             
             let valid = false;
             let message = '';
@@ -103,7 +86,7 @@ jobs:
             await github.rest.repos.createCommitStatus({
               owner: context.repo.owner,
               repo: context.repo.repo,
-              sha: prHeadSha,
+              sha: headSha,
               state: valid ? 'success' : 'failure',
               description: 'Owner Approval Check',
               context: 'check-owner-approval'
