@@ -18,29 +18,111 @@ jobs:
   check-owner-approval:
     runs-on: ubuntu-latest
     steps:
-      - name: Create placeholder status check
+      - name: Get PR and reviews
+        id: get-data
         uses: actions/github-script@v7
         with:
           script: |
             const pr = context.payload.pull_request;
             if (!pr) {
-              console.log('No PR in context');
+              core.setFailed('No pull request in context');
               return;
             }
             
             const prNumber = pr.number;
             const headSha = pr.head.sha;
+            const prAuthor = pr.user.login;
             
-            console.log('PR number:', prNumber);
-            console.log('Head SHA:', headSha);
+            // Get all reviews for this PR
+            const { data: reviews } = await github.rest.pulls.listReviews({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              pull_number: prNumber,
+            });
             
-            // For now, just create a success status
-            // TODO: Add validation logic
+            // Filter for APPROVED reviews only and extract reviewer logins
+            const approvers = reviews
+              .filter(review => review.state === 'APPROVED')
+              .map(review => review.user.login);
+            
+            return {
+              prAuthor: prAuthor,
+              prNumber: prNumber,
+              prHeadSha: headSha,
+              approvers: approvers
+            };
+      
+      - name: Validate approvals
+        id: validate
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const prAuthor = ${{ steps.get-data.outputs.prAuthor }};
+            const approvers = ${{ steps.get-data.outputs.approvers }};
+            const requiredOwner = 'theopeuchlestrade';
+            
+            // No approvals found
+            if (!approvers || approvers.length === 0) {
+              return {
+                valid: false,
+                message: 'No approvals found. At least one approval from @' + requiredOwner + ' is required.'
+              };
+            }
+            
+            // Check each approver
+            const invalidApprovals = [];
+            for (const approver of approvers) {
+              // Self-approval by the owner is allowed
+              if (approver === requiredOwner && prAuthor === requiredOwner) {
+                continue;
+              }
+              
+              // Only the owner can approve
+              if (approver !== requiredOwner) {
+                invalidApprovals.push('@' + approver);
+              }
+            }
+            
+            // Check if there's at least one valid approval from the owner
+            const hasValidOwnerApproval = approvers.includes(requiredOwner);
+            
+            if (!hasValidOwnerApproval) {
+              return {
+                valid: false,
+                message: 'No approval from @' + requiredOwner + ' found. Only @' + requiredOwner + ' can approve PRs.'
+              };
+            }
+            
+            if (invalidApprovals.length > 0) {
+              return {
+                valid: false,
+                message: 'Invalid approval(s) from: ' + invalidApprovals.join(', ') + '. Only @' + requiredOwner + ' can approve.'
+              };
+            }
+            
+            return {
+              valid: true,
+              message: 'Owner approval validated successfully.'
+            };
+      
+      - name: Publish status check
+        if: always()
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const valid = ${{ steps.validate.outputs.valid }};
+            const message = ${{ steps.validate.outputs.message }};
+            const prHeadSha = ${{ steps.get-data.outputs.prHeadSha }};
+            
             await github.rest.repos.createCommitStatus({
               owner: context.repo.owner,
               repo: context.repo.repo,
-              sha: headSha,
-              state: 'success',
+              sha: prHeadSha,
+              state: valid ? 'success' : 'failure',
               description: 'Owner Approval Check',
-              context: 'owner-approval'
+              context: 'check-owner-approval'
             });
+            
+            if (!valid) {
+              core.setFailed(message);
+            }
