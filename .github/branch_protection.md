@@ -1,6 +1,6 @@
 # Branch Protection Configuration
 
-This document describes the intended branch protection settings for the `main` branch.
+This document describes the branch protection settings for the `main` branch.
 
 ## Current State
 
@@ -15,7 +15,7 @@ Pull Requests with the following conditions.
   - ✅ Required
   - Require approvals: 1
   - Dismiss stale pull request approvals when new commits are pushed
-  - Require review from Code Owners: No
+  - **Require review from Code Owners: No** (to allow self-approval)
   - Require last push approval: No
 
 - **Require status checks to pass before merging**
@@ -23,17 +23,25 @@ Pull Requests with the following conditions.
   - Require branches to be up to date before merging
   - Status checks that are required:
     - `CI` (from `.github/workflows/ci.yml`)
+    - `owner-approval` (from `.github/workflows/require-owner-approval.yml`)
 
 - **Require linear history**
   - ✅ Required (enforces rebase/squash merge)
 
 - **Other restrictions**
-  - ❌ Do not allow force pushes
-  - ❌ Do not allow deletions
-  - ❌ Require conversation resolution before merging
+  - ✅ Do not allow force pushes
+  - ✅ Do not allow deletions
+  - ✅ Require conversation resolution before merging
   - ❌ Require signed commits: No
   - ❌ Require deployments to succeed: No
-  - ❌ Restrict who can push to matching branches: No (only admins can merge PRs)
+  - ❌ Restrict who can push to matching branches: No
+
+### Code Owners
+
+- **CODEOWNERS file**: `.github/CODEOWNERS`
+- **Content**: `* @theopeuchlestrade`
+- **Note**: Code owners review is NOT required for merging, but the `owner-approval` workflow
+  enforces that only @theopeuchlestrade can approve PRs (including self-approval)
 
 ## How to Configure
 
@@ -46,11 +54,15 @@ Pull Requests with the following conditions.
    - ✅ Require a pull request before merging
      - Require approvals: 1
      - ✅ Dismiss stale pull request approvals when new commits are pushed
+     - ❌ **Require review from Code Owners: NO** (to allow self-approval)
    - ✅ Require status checks to pass before merging
      - ✅ Require branches to be up to date before merging
-     - Search for and select: `CI`
+     - Search for and select: `CI` and `owner-approval`
    - ✅ Require linear history
    - ✅ Do not allow bypassing the above settings
+   - ✅ Require conversation resolution before merging
+   - ✅ Do not allow force pushes
+   - ✅ Do not allow deletions
 5. Click **Create**
 
 ### Via GitHub API
@@ -69,7 +81,7 @@ curl -X PUT \
   -d '{
     "required_status_checks": {
       "strict": true,
-      "contexts": ["CI"]
+      "contexts": ["CI", "owner-approval"]
     },
     "enforce_admins": true,
     "required_pull_request_reviews": {
@@ -90,12 +102,14 @@ curl -X PUT \
 
 After this configuration:
 
-- ✅ No direct pushes to `main` will be allowed
+- ✅ No direct pushes to `main` will be allowed (even for admins)
 - ✅ All changes must go through a Pull Request
-- ✅ PR must have at least 1 approval
+- ✅ PR must have at least 1 approval **from @theopeuchlestrade**
 - ✅ PR must pass CI checks
+- ✅ PR must pass the `owner-approval` check (validates approver)
 - ✅ PR must be up-to-date with `main` (linear history/rebase required)
 - ✅ All discussions in the PR must be resolved before merging
+- ✅ Self-approval is **allowed** for @theopeuchlestrade
 
 ## Workflow
 
@@ -104,14 +118,29 @@ After this configuration:
 3. Push to your branch: `git push origin feature/my-feature`
 4. Create a Pull Request from your branch to `main`
 5. Wait for CI to pass
-6. Get at least 1 approval
+6. Get approval from @theopeuchlestrade (can be self-approval)
 7. Resolve any discussions
 8. Rebase your branch on `main` if needed
-9. Merge the PR
+9. Ensure `owner-approval` check passes
+10. Merge the PR
 
 ## Notes
 
 - The CI workflow already runs on both `push` to `main` and on `pull_request` events
 - Once branch protection is enabled, the `push` trigger for `main` will only be used
-  by administrators (who can still push directly if they bypass protection)
+  by administrators (who can still push directly if they bypass protection, but this is blocked by enforce_admins: true)
 - All regular contributors will need to use PRs
+
+## How it works
+
+This configuration uses a combination of:
+
+1. **CODEOWNERS file** (`.github/CODEOWNERS`): Defines @theopeuchlestrade as the code owner for all files
+2. **Branch protection**: Requires PR with 1 approval, but does NOT require code owner review (to allow self-approval)
+3. **owner-approval workflow** (`.github/workflows/require-owner-approval.yml`): Validates that all approvals come from @theopeuchlestrade
+
+This approach allows:
+- ✅ Only @theopeuchlestrade can approve PRs (enforced by workflow)
+- ✅ @theopeuchlestrade can self-approve (allowed by workflow)
+- ✅ No direct pushes to main (enforced by branch protection)
+- ✅ PR must pass CI checks (enforced by branch protection)
