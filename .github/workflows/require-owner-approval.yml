@@ -44,14 +44,16 @@ jobs:
               pull_number: prNumber,
             });
             
-            // Filter for APPROVED reviews only
-            const approvals = reviews.filter(review => review.state === 'APPROVED');
+            // Filter for APPROVED reviews only and extract reviewer logins
+            const approvers = reviews
+              .filter(review => review.state === 'APPROVED')
+              .map(review => review.user.login);
             
             return {
               prAuthor: pr.user.login,
               prNumber: pr.number,
               prHeadSha: pr.head.sha,
-              approvals: approvals
+              approvers: approvers
             };
 
       - name: Validate approvals
@@ -60,37 +62,33 @@ jobs:
         with:
           script: |
             const prAuthor = ${{ steps.get-data.outputs.prAuthor }};
-            const approvals = ${{ steps.get-data.outputs.approvals }};
+            const approvers = ${{ steps.get-data.outputs.approvers }};
             const requiredOwner = 'theopeuchlestrade';
             
             // No approvals found
-            if (approvals.length === 0) {
+            if (approvers.length === 0) {
               return {
                 valid: false,
                 message: 'No approvals found. At least one approval from @' + requiredOwner + ' is required.'
               };
             }
             
-            // Check each approval
+            // Check each approver
             const invalidApprovals = [];
-            for (const approval of approvals) {
-              const reviewer = approval.user.login;
-              
+            for (const approver of approvers) {
               // Self-approval by the owner is allowed
-              if (reviewer === requiredOwner && prAuthor === requiredOwner) {
+              if (approver === requiredOwner && prAuthor === requiredOwner) {
                 continue;
               }
               
               // Only the owner can approve
-              if (reviewer !== requiredOwner) {
-                invalidApprovals.push('@' + reviewer);
+              if (approver !== requiredOwner) {
+                invalidApprovals.push('@' + approver);
               }
             }
             
             // Check if there's at least one valid approval from the owner
-            const hasValidOwnerApproval = approvals.some(
-              a => a.user.login === requiredOwner
-            );
+            const hasValidOwnerApproval = approvers.includes(requiredOwner);
             
             if (!hasValidOwnerApproval) {
               return {
