@@ -23,7 +23,7 @@ Pull Requests with the following conditions.
   - Require branches to be up to date before merging
   - Status checks that are required:
     - `CI` (from `.github/workflows/ci.yml`)
-    - `owner-approval` (from `.github/workflows/require-owner-approval.yml`)
+    - `check-owner-approval` (from `.github/workflows/require-owner-approval.yml`)
 
 - **Require linear history**
   - ✅ Required (enforces rebase/squash merge)
@@ -57,7 +57,7 @@ Pull Requests with the following conditions.
      - ❌ **Require review from Code Owners: NO** (to allow self-approval)
    - ✅ Require status checks to pass before merging
      - ✅ Require branches to be up to date before merging
-     - Search for and select: `CI` and `owner-approval`
+     - Search for and select: `CI` and `check-owner-approval`
    - ✅ Require linear history
    - ✅ Do not allow bypassing the above settings
    - ✅ Require conversation resolution before merging
@@ -81,7 +81,7 @@ curl -X PUT \
   -d '{
     "required_status_checks": {
       "strict": true,
-      "contexts": ["CI", "owner-approval"]
+      "contexts": ["CI", "check-owner-approval"]
     },
     "enforce_admins": true,
     "required_pull_request_reviews": {
