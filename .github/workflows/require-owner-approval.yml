@@ -14,31 +14,75 @@ jobs:
   check-owner-approval:
     runs-on: ubuntu-latest
     steps:
-      - name: Create status check
+      - name: Validate and create status check
         uses: actions/github-script@v7
         with:
           script: |
             const pr = context.payload.pull_request;
             if (!pr) {
-              console.log('No PR in context, exiting');
+              console.log('No PR in context');
               return;
             }
             
             const headSha = pr.head.sha;
+            const prAuthor = pr.user.login;
+            const requiredOwner = 'theopeuchlestrade';
             
-            // Simple version - just create success status
-            // Full validation will be added later
-            try {
-              await github.rest.repos.createCommitStatus({
-                owner: context.repo.owner,
-                repo: context.repo.repo,
-                sha: headSha,
-                state: 'success',
-                description: 'Owner Approval Check',
-                context: 'check-owner-approval'
-              });
-              console.log('Status check created successfully');
-            } catch (error) {
-              console.log('Error creating status check:', error);
-              core.setFailed(error.message);
+            // Get all reviews for this PR
+            const { data: reviews } = await github.rest.pulls.listReviews({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              pull_number: pr.number,
+            });
+            
+            // Filter for APPROVED reviews only and extract reviewer logins
+            const approvers = reviews
+              .filter(review => review.state === 'APPROVED')
+              .map(review => review.user.login);
+            
+            let valid = false;
+            let message = '';
+            
+            // No approvals found
+            if (!approvers || approvers.length === 0) {
+              valid = false;
+              message = 'No approvals found. At least one approval from @' + requiredOwner + ' is required.';
+            } else {
+              // Check each approver
+              const invalidApprovals = [];
+              for (const approver of approvers) {
+                // Self-approval by the owner is allowed
+                if (approver === requiredOwner && prAuthor === requiredOwner) {
+                  continue;
+                }
+                
+                // Only the owner can approve
+                if (approver !== requiredOwner) {
+                  invalidApprovals.push('@' + approver);
+                }
+              }
+              
+              // Check if there's at least one valid approval from the owner
+              const hasValidOwnerApproval = approvers.includes(requiredOwner);
+              
+              if (!hasValidOwnerApproval) {
+                valid = false;
+                message = 'No approval from @' + requiredOwner + ' found. Only @' + requiredOwner + ' can approve PRs.';
+              } else if (invalidApprovals.length > 0) {
+                valid = false;
+                message = 'Invalid approval(s) from: ' + invalidApprovals.join(', ') + '. Only @' + requiredOwner + ' can approve.';
+              } else {
+                valid = true;
+                message = 'Owner approval validated successfully.';
+              }
             }
+            
+            // Publish status check
+            await github.rest.repos.createCommitStatus({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              sha: headSha,
+              state: valid ? 'success' : 'failure',
+              description: 'Owner Approval Check',
+              context: 'check-owner-approval'
+            });
