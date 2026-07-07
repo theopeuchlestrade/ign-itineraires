@@ -33,7 +33,7 @@ jobs:
 
       - run: flutter pub get --enforce-lockfile
 
-      - run: flutter build web --release --base-href /ign-itineraires/
+      - run: flutter build web --release --no-web-resources-cdn --base-href /ign-itineraires/
 
       - name: Upload artifact
         uses: actions/upload-pages-artifact@v3
