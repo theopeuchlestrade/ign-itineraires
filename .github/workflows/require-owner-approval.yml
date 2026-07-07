@@ -1,5 +1,8 @@
 name: Require Owner Approval
 
+# This workflow enforces that only @theopeuchlestrade can approve PRs
+# It allows self-approval and creates a status check that is required by branch protection
+
 on:
   pull_request:
     types: [opened, synchronize, reopened, ready_for_review]
