@@ -27,16 +27,30 @@ jobs:
         uses: actions/github-script@v7
         with:
           script: |
-            // Debug: log the full context
-            console.log('Full context:', JSON.stringify(context, null, 2));
-            
-            const prNumber = context.payload.pull_request?.number;
+            // Get PR number from various possible sources
+            let prNumber = github.context.payload.pull_request?.number;
             if (!prNumber) {
-              core.setFailed('No pull_request.number found in context');
+              prNumber = github.context.payload.number;
+            }
+            if (!prNumber) {
+              // If triggered by push to PR branch, find the PR
+              const { data: prs } = await github.rest.pulls.list({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                state: 'open',
+                head: context.ref
+              });
+              if (prs.length > 0) {
+                prNumber = prs[0].number;
+              }
+            }
+            
+            if (!prNumber) {
+              core.setFailed('Could not determine PR number');
               return;
             }
             
-            console.log('Using PR number:', prNumber);
+            console.log('Found PR number:', prNumber);
             
             // Get PR details
             const { data: pr } = await github.rest.pulls.get({
@@ -45,8 +59,6 @@ jobs:
               pull_number: prNumber,
             });
             
-            console.log('PR details:', { user: pr.user.login, number: pr.number, headSha: pr.head.sha });
-            
             // Get all reviews for this PR
             const { data: reviews } = await github.rest.pulls.listReviews({
               owner: context.repo.owner,
@@ -54,14 +66,10 @@ jobs:
               pull_number: prNumber,
             });
             
-            console.log('All reviews:', reviews.map(r => ({ state: r.state, user: r.user.login })));
-            
             // Filter for APPROVED reviews only and extract reviewer logins
             const approvers = reviews
               .filter(review => review.state === 'APPROVED')
               .map(review => review.user.login);
-            
-            console.log('Approvers:', approvers);
             
             return {
               prAuthor: pr.user.login,
