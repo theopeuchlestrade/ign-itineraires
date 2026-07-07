@@ -43,15 +43,31 @@ kept by IGN Itinéraires.
 
 ## Official Web Hosting Logs
 
-The official static site at `ign-itineraires.app` is served through a reverse proxy
-and Nginx. These systems may process the IP address, request date, user agent,
-requested asset path, response status, and security events to operate and
-protect the service. Search text, route coordinates, GPS fixes, favorites, and
-route history are not sent to this static host.
+The official static site (when deployed on GitHub Pages or ign-itineraires.app) is
+served through a static hosting service. These systems may process the IP address,
+request date, user agent, requested asset path, and response status to operate
+the service. Search text, route coordinates, GPS fixes, favorites, and route
+history are not sent to this static host.
 
-REPLACE_BEFORE_RELEASE — document the legal basis, recipients, exact retention
-period, public privacy contact, and procedures for exercising data rights before
-the official deployment is published.
+**Legal basis:** Processing is based on the legitimate interest of the editor to
+operate and secure the service (Article 6(1)(f) GDPR).
+
+**Recipients:** Access logs are processed by the hosting provider (GitHub, Inc.)
+according to their privacy policy.
+
+**Retention period:** Log data retention is governed by the hosting provider's
+policy. For GitHub Pages, see:
+https://docs.github.com/en/site-policy/privacy-policies/github-privacy-statement
+
+**Public privacy contact:** For data rights inquiries, open an issue at
+https://github.com/theopeuchlestrade/ign-itineraires/issues
+
+**Procedures for exercising data rights:** Users may request access, rectification,
+or erasure of their personal data by opening an issue on the public repository.
+The editor commits to respond within one month. Since the application processes
+no personal data on the server side (all route data remains on device), most
+requests will concern hosting provider logs, which are managed according to
+the hosting provider's own procedures.
 
 ## Fonts and Resources
 
