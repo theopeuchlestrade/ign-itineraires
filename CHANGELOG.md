@@ -28,6 +28,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Added issue and pull request templates, dependency automation, secret
   scanning, workflow linting, and local contributor tooling.
 
+### Fixed
+
+- Fixed dark theme blue colors to align with DSFR specifications, replacing
+  custom `#1A1A5C` with official `#3A3AFF` (blue-france-125) token for cards and
+  primary containers.
+
 ### Security
 
 - Restricted application-owned HTTP access to Géoplateforme endpoints.
