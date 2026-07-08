@@ -82,7 +82,9 @@ ThemeData buildCompanyTheme(Brightness brightness) {
     outline: isDark ? const Color(0xFF6A6A6A) : const Color(0xFF6A6A6A),
     outlineVariant: isDark ? const Color(0xFF4A4A4A) : const Color(0xFFB0B0B0),
     primaryContainer: isDark
-        ? const Color(0xFF3A3AFF) // Bleu France 125 - DSFR background-action-high
+        ? const Color(
+            0xFF3A3AFF,
+          ) // Bleu France 125 - DSFR background-action-high
         : const Color(0xFFE3F2FD),
     secondaryContainer: isDark
         ? const Color(0xFF7C0000)
