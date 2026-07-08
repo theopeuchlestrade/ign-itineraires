@@ -12,13 +12,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Added address and place search using the French Géoplateforme.
 - Added car and pedestrian route calculation with distance, duration, geometry,
   and turn-by-turn steps.
-- Added foreground GPS guidance, voice instructions, off-route recalculation,
+- Added foreground GPS guidance with map orientation, French voice
+  instructions with locally stored mute preference, off-route recalculation,
   and screen wake-lock handling.
 - Added mobile GPS quality states, precise-location checks, stale-fix
   rejection, uncertainty display, conservative arrival confirmation, and
   heading-aware route matching.
-- Added IGN Plan map tiles and explicit handoff to compatible external
-  navigation applications.
+- Added departure from a selected address or the current GPS position.
+- Added IGN Plan WMTS base map and explicit handoff to Google Maps, Apple Maps,
+  or compatible external navigation applications.
 - Added on-device favorites and opt-in recent-route history.
 - Added responsive light and dark interfaces for web, Android, and iOS.
 - Added deterministic unit, widget, golden, integration, and live contract
