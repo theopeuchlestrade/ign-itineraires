@@ -14,7 +14,7 @@ unofficial and is not affiliated with IGN or the French administration.
 | `data.geopf.fr/navigation/itineraire` | start and end coordinates, mode, and calculation options | initial calculation and off-route recalculation |
 | `data.geopf.fr/wmts` | visible tile coordinates | map display and movement |
 | `www.google.com`, `maps.apple.com`, or an Android navigation application | start, end, and mode | only after an explicit external-navigation action |
-| `ign-itineraires.app/legal.html` | no route data; ordinary connection metadata only | when the legal notice is opened from a native build |
+| legal notices on GitHub Pages | no route data; ordinary connection metadata only | when the legal notice is opened from a native build |
 | system or browser voice engine | instruction text | only when voice is enabled; local or remote processing depends on the installed engine |
 
 As with any Internet connection, the contacted service also receives the IP address and technical metadata necessary for the request. The application does not transmit GPS position to a IGN Itinéraires application API.
@@ -43,8 +43,7 @@ kept by IGN Itinéraires.
 
 ## Official Web Hosting Logs
 
-The official static site (when deployed on GitHub Pages or ign-itineraires.app) is
-served through a static hosting service. These systems may process the IP address,
+The application (deployed on GitHub Pages) is served through a static hosting service. These systems may process the IP address,
 request date, user agent, requested asset path, and response status to operate
 the service. Search text, route coordinates, GPS fixes, favorites, and route
 history are not sent to this static host.
@@ -87,9 +86,9 @@ built-in mobile guidance is suspended until precise location is available.
 
 Application-owned HTTP traffic is built only for `data.geopf.fr`. Google and
 Apple URLs are created only after an explicit external-navigation action, and
-the planned official Map host only when a native user opens the legal notice.
+the configured Map host only when a native user opens the legal notice.
 The endpoint registry is centralized in the source code and covered by tests.
-On the official web deployment, the Content Security Policy enforces the
+On the GitHub Pages deployment, the Content Security Policy enforces the
 corresponding network boundary. An installed system or browser speech engine
 can process spoken instruction text locally or remotely.
 

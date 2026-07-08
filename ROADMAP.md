@@ -33,5 +33,6 @@ and foreground navigation application using public French map services.
 
 ## Maintainer Notes
 
-Release timing, versioning, mobile signing, official deployment, and final
-scope decisions remain maintainer responsibilities.
+Release timing, versioning, mobile signing, and final scope decisions
+remain maintainer responsibilities. Official deployment is currently limited to
+GitHub Pages at <https://theopeuchlestrade.github.io/ign-itineraires/>.
