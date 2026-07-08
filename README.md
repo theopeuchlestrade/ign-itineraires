@@ -15,9 +15,9 @@ and iOS and calls public French Géoplateforme services directly.
 
 The repository and Dart package are named `ign_itineraires`.
 
-Planned official web address: <https://ign-itineraires.app>. Until the deployment
-legal notice and privacy metadata are complete, this repository is the only
-officially published artifact.
+The application is currently available via GitHub Pages at
+<https://theopeuchlestrade.github.io/ign-itineraires/>. Until further notice,
+this repository remains the only officially published artifact.
 
 > [!IMPORTANT]
 > This is an unofficial open source project. It is not

@@ -34,12 +34,12 @@ void main() {
     };
 
     expect(hosts, NetworkEndpoints.explicitExternalNavigationHosts);
-    expect(NetworkEndpoints.explicitPolicyHosts, {'ign-itineraires.app'});
+    expect(NetworkEndpoints.explicitPolicyHosts, {'theopeuchlestrade.github.io'});
     expect(NetworkEndpoints.registeredHosts, {
       'data.geopf.fr',
       'www.google.com',
       'maps.apple.com',
-      'ign-itineraires.app',
+      'theopeuchlestrade.github.io',
     });
   });
 }

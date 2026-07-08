@@ -1,5 +1,9 @@
 # Release Checklist
 
+> **Note:** Official releases are currently suspended. The application is available
+> via GitHub Pages at <https://theopeuchlestrade.github.io/ign-itineraires/>
+> until further notice.
+
 Duplicate this document for each version and keep the results with release notes.
 
 ## Identification

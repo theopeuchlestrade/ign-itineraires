@@ -5,7 +5,7 @@
 Security fixes primarily target:
 
 - the `main` branch;
-- the official web deployment once it is released;
+- the GitHub Pages deployment at <https://theopeuchlestrade.github.io/ign-itineraires/>;
 - official Android and iOS builds when they are distributed.
 
 Older branches, unmaintained forks, and independently derived builds are not
