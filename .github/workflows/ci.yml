@@ -102,6 +102,7 @@ jobs:
           --web-port=7357
           --browser-name=chrome
           --timeout=120
+          --no-web-resources-cdn
           --screenshot=build/test-screenshots
       - uses: actions/upload-artifact@v4
         if: always()
