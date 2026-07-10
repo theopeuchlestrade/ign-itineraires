@@ -47,9 +47,11 @@ retention policy.
 
 ## Network Boundary
 
-Application-owned HTTP requests are built only for `data.geopf.fr`. The web
-deployment additionally enforces this boundary with its Content Security
-Policy. Google Maps and Apple Maps URLs are created only after an explicit
+Application-owned HTTP requests are built only for `data.geopf.fr`. The
+GitHub Pages deployment additionally carries a static Content Security Policy
+meta tag that limits image and connection targets to this boundary. The
+container deployment sends the same network boundary through HTTP security
+headers. Google Maps and Apple Maps URLs are created only after an explicit
 user action. System speech engines may process text locally or remotely. Any
 new host or data flow requires an endpoint-registry change, tests, and a
 privacy review.

@@ -1,3 +1,5 @@
+import 'dart:io';
+
 import 'package:flutter_test/flutter_test.dart';
 import 'package:ign_itineraires/src/features/routing/data/navigation_launcher.dart';
 import 'package:ign_itineraires/src/features/routing/domain/routing_models.dart';
@@ -34,12 +36,47 @@ void main() {
     };
 
     expect(hosts, NetworkEndpoints.explicitExternalNavigationHosts);
-    expect(NetworkEndpoints.explicitPolicyHosts, {'theopeuchlestrade.github.io'});
+    expect(NetworkEndpoints.explicitPolicyHosts, {
+      'theopeuchlestrade.github.io',
+    });
     expect(NetworkEndpoints.registeredHosts, {
       'data.geopf.fr',
       'www.google.com',
       'maps.apple.com',
       'theopeuchlestrade.github.io',
     });
+  });
+
+  test('GitHub Pages CSP meta keeps web traffic on registered hosts', () {
+    final html = File('web/index.html').readAsStringSync();
+    final match = RegExp(
+      r'http-equiv="Content-Security-Policy"\s+content="([^"]+)"',
+      dotAll: true,
+    ).firstMatch(html);
+
+    expect(match, isNotNull);
+    final csp = match!.group(1)!;
+    expect(
+      csp,
+      contains(
+        "connect-src 'self' https://${NetworkEndpoints.geoplateformeHost};",
+      ),
+    );
+    expect(
+      csp,
+      contains(
+        "img-src 'self' data: blob: "
+        'https://${NetworkEndpoints.geoplateformeHost};',
+      ),
+    );
+
+    final httpsHosts = RegExp(
+      r'https://([^\s;]+)',
+    ).allMatches(csp).map((match) => match.group(1)!).toSet();
+
+    expect(
+      httpsHosts.difference(NetworkEndpoints.applicationHttpHosts),
+      isEmpty,
+    );
   });
 }

@@ -32,9 +32,10 @@ class SharedPreferencesRouteStore implements LocalRouteStore {
   @override
   Future<List<Place>> loadFavorites() async {
     final preferences = await SharedPreferences.getInstance();
-    return _decodeList(
+    return _decodeItems(
       preferences.getStringList(_favoritesKey),
-    ).map(Place.fromJson).toList(growable: false);
+      Place.fromJson,
+    ).toList(growable: false);
   }
 
   @override
@@ -49,9 +50,10 @@ class SharedPreferencesRouteStore implements LocalRouteStore {
   @override
   Future<List<RecentRoute>> loadRecents() async {
     final preferences = await SharedPreferences.getInstance();
-    return _decodeList(
+    return _decodeItems(
       preferences.getStringList(_recentsKey),
-    ).map(RecentRoute.fromJson).toList(growable: false);
+      RecentRoute.fromJson,
+    ).toList(growable: false);
   }
 
   @override
@@ -93,11 +95,20 @@ class SharedPreferencesRouteStore implements LocalRouteStore {
     await preferences.setBool(_voiceEnabledKey, enabled);
   }
 
-  Iterable<Map<String, dynamic>> _decodeList(List<String>? values) sync* {
+  Iterable<T> _decodeItems<T>(
+    List<String>? values,
+    T Function(Map<String, dynamic> json) decode,
+  ) sync* {
     for (final value in values ?? const <String>[]) {
       try {
-        yield jsonDecode(value) as Map<String, dynamic>;
+        final json = jsonDecode(value);
+        if (json is! Map<String, dynamic>) continue;
+        yield decode(json);
       } on FormatException {
+        // Ignore obsolete or corrupted local entries.
+      } on TypeError {
+        // Ignore obsolete or corrupted local entries.
+      } on ArgumentError {
         // Ignore obsolete or corrupted local entries.
       }
     }

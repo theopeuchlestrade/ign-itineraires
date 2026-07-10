@@ -282,12 +282,17 @@ class _NavigationPageState extends State<NavigationPage>
       ),
     );
     if (provider == null) return;
-    await _launcher.launch(
+    final opened = await _launcher.launch(
       provider: provider,
       start: start,
       destination: widget.destination,
       mode: widget.mode,
     );
+    if (!opened && mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Impossible d’ouvrir le guidage.')),
+      );
+    }
   }
 }
 

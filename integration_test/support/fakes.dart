@@ -193,6 +193,7 @@ class FakeExternalNavigation implements ExternalNavigationGateway {
   ];
   int launchCalls = 0;
   NavigationProvider? lastProvider;
+  bool launchResult = true;
 
   @override
   Future<bool> launch({
@@ -203,7 +204,7 @@ class FakeExternalNavigation implements ExternalNavigationGateway {
   }) async {
     launchCalls++;
     lastProvider = provider;
-    return true;
+    return launchResult;
   }
 }
 

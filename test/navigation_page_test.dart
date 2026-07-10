@@ -5,6 +5,9 @@ import 'package:ign_itineraires/src/features/routing/domain/routing_models.dart'
 import 'package:ign_itineraires/src/features/routing/presentation/navigation_page.dart';
 import 'package:latlong2/latlong.dart';
 
+import 'support/fakes.dart';
+import 'support/test_fixtures.dart';
+
 void main() {
   testWidgets('renders the live map before MapController is ready', (
     tester,
@@ -52,5 +55,31 @@ void main() {
     await tester.pump();
 
     expect(tester.takeException(), isNull);
+  });
+
+  testWidgets('shows a message when external guidance fails', (tester) async {
+    final harness = TestAppHarness()..externalNavigation.launchResult = false;
+
+    await tester.pumpWidget(
+      MaterialApp(
+        home: NavigationPage(
+          destination: parisDestination,
+          mode: TravelMode.car,
+          dependencies: harness.dependencies,
+        ),
+      ),
+    );
+    await tester.pump();
+    await tester.pump();
+
+    await tester.tap(find.byTooltip('Ouvrir dans une autre application'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Google Maps'));
+    await tester.pumpAndSettle();
+
+    expect(harness.externalNavigation.launchCalls, 1);
+    expect(find.text('Impossible d’ouvrir le guidage.'), findsOneWidget);
+
+    await harness.dispose();
   });
 }

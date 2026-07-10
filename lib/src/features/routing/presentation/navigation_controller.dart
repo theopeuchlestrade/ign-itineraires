@@ -26,6 +26,8 @@ class NavigationController extends ChangeNotifier {
          mode: mode,
          voiceEnabled: true,
        ) {
+    _signalPolicy = _NavigationSignalPolicy(mode: mode, now: _now);
+    _deviationPolicy = _RouteDeviationPolicy(mode);
     _speech.setErrorHandler(_handleSpeechError);
   }
 
@@ -42,19 +44,15 @@ class NavigationController extends ChangeNotifier {
   NavigationEngine? _engine;
   final GuidanceAnnouncementPlanner _announcementPlanner =
       GuidanceAnnouncementPlanner();
+  late final _NavigationSignalPolicy _signalPolicy;
+  late final _RouteDeviationPolicy _deviationPolicy;
+  final _ReroutePolicy _reroutePolicy = _ReroutePolicy();
   StreamSubscription<NavigationPosition>? _positionSubscription;
   Timer? _signalWatchdog;
   double? _progressMeters;
-  DateTime? _lastRerouteAt;
-  DateTime? _offRouteSince;
   DateTime? _lastFixReceivedAt;
   NavigationPosition? _lastAcceptedPosition;
   NavigationPosition? _pendingPosition;
-  int _offRouteFixes = 0;
-  int _reverseDirectionFixes = 0;
-  int _arrivalFixes = 0;
-  int _rejectedFixes = 0;
-  int _recoveryFixes = 0;
   int _operationGeneration = 0;
   bool _handlingPosition = false;
   bool _foreground = true;
@@ -75,7 +73,7 @@ class NavigationController extends ChangeNotifier {
     try {
       final position = await _location.currentPosition(navigationMode: mode);
       if (!_canContinue(operation)) return;
-      final issue = _positionIssue(position);
+      final issue = _signalPolicy.issueFor(position);
       if (issue != null) {
         _setSession(
           session.copyWith(
@@ -124,12 +122,8 @@ class NavigationController extends ChangeNotifier {
     if (!_canContinue(operation)) return;
     _engine = NavigationEngine(route, mode);
     _progressMeters = null;
-    _offRouteFixes = 0;
-    _offRouteSince = null;
-    _reverseDirectionFixes = 0;
-    _arrivalFixes = 0;
-    _rejectedFixes = 0;
-    _recoveryFixes = 0;
+    _deviationPolicy.reset();
+    _signalPolicy.reset();
     _lastAcceptedPosition = position;
     _lastFixReceivedAt = _now();
     final update = _engine!.update(position);
@@ -215,34 +209,25 @@ class NavigationController extends ChangeNotifier {
     if (!_canContinue(operation) || session.status != NavigationStatus.active) {
       return;
     }
-    final issue = _positionIssue(position);
+    final issue = _signalPolicy.issueFor(position);
     if (issue != null) {
-      _rejectedFixes++;
-      _recoveryFixes = 0;
-      final signalState = position.precision == LocationPrecision.reduced
-          ? NavigationSignalState.reduced
-          : _rejectedFixes >= 3
-          ? NavigationSignalState.degraded
-          : session.signalState;
+      final signalState = _signalPolicy.reject(
+        position: position,
+        currentSignalState: session.signalState,
+      );
       _setSession(session.copyWith(signalState: signalState, message: issue));
       return;
     }
-    if (session.signalState == NavigationSignalState.degraded ||
-        session.signalState == NavigationSignalState.interrupted ||
-        session.signalState == NavigationSignalState.reduced) {
-      _recoveryFixes++;
-      if (_recoveryFixes < 2) {
-        _setSession(
-          session.copyWith(
-            signalState: NavigationSignalState.acquiring,
-            message: 'Signal GPS retrouvé. Confirmation en cours…',
-          ),
-        );
-        return;
-      }
+    if (_signalPolicy.needsRecoveryConfirmation(session.signalState)) {
+      _setSession(
+        session.copyWith(
+          signalState: NavigationSignalState.acquiring,
+          message: 'Signal GPS retrouvé. Confirmation en cours…',
+        ),
+      );
+      return;
     }
-    _rejectedFixes = 0;
-    _recoveryFixes = 0;
+    _signalPolicy.accept();
     final engine = _engine;
     final route = session.route;
     if (engine == null || route == null) return;
@@ -255,23 +240,7 @@ class NavigationController extends ChangeNotifier {
     _progressMeters = update.progressMeters;
     _lastAcceptedPosition = position;
 
-    final offRouteThreshold = mode == TravelMode.pedestrian ? 15.0 : 25.0;
-    final certainlyOffRoute =
-        update.distanceFromRouteMeters - position.accuracyMeters >
-        offRouteThreshold;
-    if (certainlyOffRoute) {
-      _offRouteFixes++;
-      _offRouteSince ??= position.timestamp;
-    } else {
-      _offRouteFixes = 0;
-      _offRouteSince = null;
-    }
-    _reverseDirectionFixes = update.reverseDirection
-        ? _reverseDirectionFixes + 1
-        : 0;
-    _arrivalFixes = update.arrived && position.accuracyMeters <= 20
-        ? _arrivalFixes + 1
-        : 0;
+    _deviationPolicy.update(update: update, position: position);
 
     _setSession(
       session.copyWith(
@@ -290,7 +259,7 @@ class NavigationController extends ChangeNotifier {
       ),
     );
 
-    if (_arrivalFixes >= 2) {
+    if (_deviationPolicy.hasArrived) {
       await _arrive(operation);
       return;
     }
@@ -303,12 +272,7 @@ class NavigationController extends ChangeNotifier {
       if (announcement != null) await _speak(announcement);
     }
     if (!_canContinue(operation)) return;
-    final offRouteLongEnough =
-        _offRouteSince != null &&
-        position.timestamp.difference(_offRouteSince!) >=
-            const Duration(seconds: 4);
-    if ((_offRouteFixes >= 3 && offRouteLongEnough) ||
-        _reverseDirectionFixes >= 3) {
+    if (_deviationPolicy.shouldReroute(position.timestamp)) {
       await _reroute(position, operation: operation);
     }
   }
@@ -319,13 +283,9 @@ class NavigationController extends ChangeNotifier {
     bool force = false,
   }) async {
     if (!_canContinue(operation)) return;
-    final now = _now();
-    if (!force &&
-        _lastRerouteAt != null &&
-        now.difference(_lastRerouteAt!) < const Duration(seconds: 20)) {
+    if (!_reroutePolicy.markAttempt(_now(), force: force)) {
       return;
     }
-    _lastRerouteAt = now;
     _setSession(
       session.copyWith(
         status: NavigationStatus.rerouting,
@@ -351,7 +311,7 @@ class NavigationController extends ChangeNotifier {
       if (!_canContinue(operation)) return;
       if (session.voiceEnabled) await _speak('Itinéraire recalculé.');
     } on GeoplateformeException catch (error) {
-      _offRouteFixes = 0;
+      _deviationPolicy.clearOffRouteFixes();
       _setSession(
         session.copyWith(
           status: NavigationStatus.active,
@@ -361,7 +321,7 @@ class NavigationController extends ChangeNotifier {
       );
       await _ensureForegroundServices(operation);
     } catch (_) {
-      _offRouteFixes = 0;
+      _deviationPolicy.clearOffRouteFixes();
       _setSession(
         session.copyWith(
           status: NavigationStatus.active,
@@ -388,11 +348,7 @@ class NavigationController extends ChangeNotifier {
     if (_disposed || !_foreground) return;
     _foreground = false;
     _operationGeneration++;
-    _pendingPosition = null;
-    _signalWatchdog?.cancel();
-    _signalWatchdog = null;
-    await _positionSubscription?.cancel();
-    _positionSubscription = null;
+    await _stopForegroundTracking();
     await _stopSpeechAndWakeLock();
     if (_disposed ||
         session.status == NavigationStatus.stopped ||
@@ -422,7 +378,7 @@ class NavigationController extends ChangeNotifier {
     try {
       final position = await _location.currentPosition(navigationMode: mode);
       if (!_canContinue(operation)) return;
-      final issue = _positionIssue(position);
+      final issue = _signalPolicy.issueFor(position);
       if (issue != null) throw DeviceLocationException(issue);
       await _reroute(position, operation: operation, force: true);
     } on DeviceLocationException catch (error) {
@@ -449,11 +405,7 @@ class NavigationController extends ChangeNotifier {
   Future<void> stop() async {
     _foreground = false;
     _operationGeneration++;
-    _pendingPosition = null;
-    _signalWatchdog?.cancel();
-    _signalWatchdog = null;
-    await _positionSubscription?.cancel();
-    _positionSubscription = null;
+    await _stopForegroundTracking();
     await _stopSpeechAndWakeLock();
     _setSession(session.copyWith(status: NavigationStatus.stopped));
   }
@@ -461,10 +413,7 @@ class NavigationController extends ChangeNotifier {
   Future<void> _arrive(int operation) async {
     if (!_canContinue(operation)) return;
     _operationGeneration++;
-    _signalWatchdog?.cancel();
-    _signalWatchdog = null;
-    await _positionSubscription?.cancel();
-    _positionSubscription = null;
+    await _stopForegroundTracking();
     await _wakeLock.disable();
     _setSession(
       session.copyWith(
@@ -475,27 +424,6 @@ class NavigationController extends ChangeNotifier {
       ),
     );
     if (session.voiceEnabled) await _speak('Vous êtes arrivé à destination.');
-  }
-
-  String? _positionIssue(NavigationPosition position) {
-    if (position.precision == LocationPrecision.reduced) {
-      return 'Localisation approximative activée. Autorisez la position précise '
-          'dans les réglages ou utilisez une application GPS externe.';
-    }
-    if (position.isMocked && !kDebugMode) {
-      return 'Une position simulée a été détectée. Le guidage est suspendu.';
-    }
-    final age = _now().difference(position.timestamp);
-    if (age > const Duration(seconds: 5) || age < const Duration(seconds: -2)) {
-      return 'La position GPS reçue est trop ancienne. Recherche d’un signal récent…';
-    }
-    final maximumAccuracy = mode == TravelMode.pedestrian ? 25.0 : 35.0;
-    if (!position.accuracyMeters.isFinite ||
-        position.accuracyMeters > maximumAccuracy) {
-      return 'Précision GPS insuffisante '
-          '(${position.accuracyMeters.round()} m). Guidage suspendu.';
-    }
-    return null;
   }
 
   double _displayHeading(NavigationPosition position, GuidanceUpdate update) {
@@ -578,6 +506,14 @@ class NavigationController extends ChangeNotifier {
     );
   }
 
+  Future<void> _stopForegroundTracking() async {
+    _pendingPosition = null;
+    _signalWatchdog?.cancel();
+    _signalWatchdog = null;
+    await _positionSubscription?.cancel();
+    _positionSubscription = null;
+  }
+
   Future<void> _stopSpeechAndWakeLock() async {
     try {
       await _speech.stop();
@@ -620,5 +556,138 @@ class NavigationController extends ChangeNotifier {
     unawaited(_positionSubscription?.cancel());
     unawaited(_stopSpeechAndWakeLock());
     super.dispose();
+  }
+}
+
+class _NavigationSignalPolicy {
+  _NavigationSignalPolicy({required this.mode, required this.now});
+
+  final TravelMode mode;
+  final DateTime Function() now;
+  int _rejectedFixes = 0;
+  int _recoveryFixes = 0;
+
+  String? issueFor(NavigationPosition position) {
+    if (position.precision == LocationPrecision.reduced) {
+      return 'Localisation approximative activée. Autorisez la position précise '
+          'dans les réglages ou utilisez une application GPS externe.';
+    }
+    if (position.isMocked && !kDebugMode) {
+      return 'Une position simulée a été détectée. Le guidage est suspendu.';
+    }
+    final age = now().difference(position.timestamp);
+    if (age > const Duration(seconds: 5) || age < const Duration(seconds: -2)) {
+      return 'La position GPS reçue est trop ancienne. Recherche d’un signal récent…';
+    }
+    final maximumAccuracy = mode == TravelMode.pedestrian ? 25.0 : 35.0;
+    if (!position.accuracyMeters.isFinite ||
+        position.accuracyMeters > maximumAccuracy) {
+      return 'Précision GPS insuffisante '
+          '(${position.accuracyMeters.round()} m). Guidage suspendu.';
+    }
+    return null;
+  }
+
+  NavigationSignalState reject({
+    required NavigationPosition position,
+    required NavigationSignalState currentSignalState,
+  }) {
+    _rejectedFixes++;
+    _recoveryFixes = 0;
+    if (position.precision == LocationPrecision.reduced) {
+      return NavigationSignalState.reduced;
+    }
+    return _rejectedFixes >= 3
+        ? NavigationSignalState.degraded
+        : currentSignalState;
+  }
+
+  bool needsRecoveryConfirmation(NavigationSignalState signalState) {
+    if (signalState != NavigationSignalState.degraded &&
+        signalState != NavigationSignalState.interrupted &&
+        signalState != NavigationSignalState.reduced) {
+      return false;
+    }
+    _recoveryFixes++;
+    return _recoveryFixes < 2;
+  }
+
+  void accept() {
+    _rejectedFixes = 0;
+    _recoveryFixes = 0;
+  }
+
+  void reset() {
+    _rejectedFixes = 0;
+    _recoveryFixes = 0;
+  }
+}
+
+class _RouteDeviationPolicy {
+  _RouteDeviationPolicy(this.mode);
+
+  final TravelMode mode;
+  int _offRouteFixes = 0;
+  int _reverseDirectionFixes = 0;
+  int _arrivalFixes = 0;
+  DateTime? _offRouteSince;
+
+  bool get hasArrived => _arrivalFixes >= 2;
+
+  void update({
+    required GuidanceUpdate update,
+    required NavigationPosition position,
+  }) {
+    final offRouteThreshold = mode == TravelMode.pedestrian ? 15.0 : 25.0;
+    final certainlyOffRoute =
+        update.distanceFromRouteMeters - position.accuracyMeters >
+        offRouteThreshold;
+    if (certainlyOffRoute) {
+      _offRouteFixes++;
+      _offRouteSince ??= position.timestamp;
+    } else {
+      _offRouteFixes = 0;
+      _offRouteSince = null;
+    }
+    _reverseDirectionFixes = update.reverseDirection
+        ? _reverseDirectionFixes + 1
+        : 0;
+    _arrivalFixes = update.arrived && position.accuracyMeters <= 20
+        ? _arrivalFixes + 1
+        : 0;
+  }
+
+  bool shouldReroute(DateTime timestamp) {
+    final offRouteSince = _offRouteSince;
+    final offRouteLongEnough =
+        offRouteSince != null &&
+        timestamp.difference(offRouteSince) >= const Duration(seconds: 4);
+    return (_offRouteFixes >= 3 && offRouteLongEnough) ||
+        _reverseDirectionFixes >= 3;
+  }
+
+  void clearOffRouteFixes() {
+    _offRouteFixes = 0;
+  }
+
+  void reset() {
+    _offRouteFixes = 0;
+    _reverseDirectionFixes = 0;
+    _arrivalFixes = 0;
+    _offRouteSince = null;
+  }
+}
+
+class _ReroutePolicy {
+  DateTime? _lastRerouteAt;
+
+  bool markAttempt(DateTime now, {required bool force}) {
+    if (!force &&
+        _lastRerouteAt != null &&
+        now.difference(_lastRerouteAt!) < const Duration(seconds: 20)) {
+      return false;
+    }
+    _lastRerouteAt = now;
+    return true;
   }
 }

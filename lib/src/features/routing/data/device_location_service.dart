@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/foundation.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:ign_itineraires/src/features/routing/domain/navigation_models.dart';
@@ -23,7 +25,16 @@ class DeviceLocationException implements Exception {
 }
 
 class DeviceLocationService implements DeviceLocationGateway {
+  DeviceLocationService({
+    DateTime Function()? now,
+    this.precisionCacheDuration = const Duration(seconds: 2),
+  }) : _now = now ?? DateTime.now;
+
+  final DateTime Function() _now;
+  final Duration precisionCacheDuration;
   LocationPrecision _precision = LocationPrecision.unknown;
+  DateTime? _precisionReadAt;
+  Future<LocationPrecision>? _pendingPrecisionRead;
 
   @override
   Future<Place> currentPlace() async {
@@ -35,7 +46,7 @@ class DeviceLocationService implements DeviceLocationGateway {
     TravelMode? navigationMode,
   }) async {
     await _ensurePermission();
-    _precision = await _readPrecision();
+    _precision = await _refreshPrecision(force: true);
     try {
       final position =
           navigationMode == null || _precision == LocationPrecision.reduced
@@ -56,11 +67,11 @@ class DeviceLocationService implements DeviceLocationGateway {
                       position.accuracy.isFinite &&
                       position.accuracy <=
                           (navigationMode == TravelMode.pedestrian ? 25 : 35) &&
-                      DateTime.now().difference(position.timestamp).abs() <=
+                      _now().difference(position.timestamp).abs() <=
                           const Duration(seconds: 5),
                 )
                 .timeout(const Duration(seconds: 20));
-      return _fromGeolocator(position);
+      return _fromGeolocator(position, precision: _precision);
     } catch (_) {
       throw const DeviceLocationException(
         'Votre position n’a pas pu être déterminée. Saisissez un départ.',
@@ -70,9 +81,13 @@ class DeviceLocationService implements DeviceLocationGateway {
 
   @override
   Stream<NavigationPosition> watchPositions(TravelMode mode) {
+    unawaited(_refreshPrecision(force: true));
     return Geolocator.getPositionStream(
       locationSettings: _settings(mode),
-    ).map(_fromGeolocator);
+    ).asyncMap((position) async {
+      final precision = await _refreshPrecision();
+      return _fromGeolocator(position, precision: precision);
+    });
   }
 
   LocationSettings _settings(TravelMode? mode, {Duration? timeLimit}) {
@@ -145,7 +160,10 @@ class DeviceLocationService implements DeviceLocationGateway {
     }
   }
 
-  NavigationPosition _fromGeolocator(Position position) {
+  NavigationPosition _fromGeolocator(
+    Position position, {
+    required LocationPrecision precision,
+  }) {
     return NavigationPosition(
       point: LatLng(position.latitude, position.longitude),
       accuracyMeters: position.accuracy.isFinite ? position.accuracy : 999,
@@ -160,7 +178,7 @@ class DeviceLocationService implements DeviceLocationGateway {
           ? position.speedAccuracy
           : 999,
       timestamp: position.timestamp,
-      precision: _precision,
+      precision: precision,
       isMocked: position.isMocked,
     );
   }
@@ -175,5 +193,26 @@ class DeviceLocationService implements DeviceLocationGateway {
     } catch (_) {
       return LocationPrecision.unknown;
     }
+  }
+
+  Future<LocationPrecision> _refreshPrecision({bool force = false}) {
+    final readAt = _precisionReadAt;
+    final fresh =
+        readAt != null && _now().difference(readAt) < precisionCacheDuration;
+    if (!force && fresh) return Future.value(_precision);
+    final pending = _pendingPrecisionRead;
+    if (pending != null) return pending;
+
+    final future = _readPrecision().then((precision) {
+      _precision = precision;
+      _precisionReadAt = _now();
+      return precision;
+    });
+    _pendingPrecisionRead = future;
+    return future.whenComplete(() {
+      if (identical(_pendingPrecisionRead, future)) {
+        _pendingPrecisionRead = null;
+      }
+    });
   }
 }
