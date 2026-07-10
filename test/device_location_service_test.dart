@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter_test/flutter_test.dart';
 import 'package:geolocator_platform_interface/geolocator_platform_interface.dart';
 import 'package:ign_itineraires/src/features/routing/data/device_location_service.dart';
@@ -84,6 +86,38 @@ void main() {
     expect(position.precision, LocationPrecision.reduced);
   });
 
+  test(
+    'refreshes operating-system precision while streaming positions',
+    () async {
+      var now = DateTime(2026);
+      final streamController = StreamController<Position>();
+      platform.positionStream = streamController;
+      service = DeviceLocationService(
+        now: () => now,
+        precisionCacheDuration: const Duration(seconds: 1),
+      );
+      final positions = <NavigationPosition>[];
+      final subscription = service
+          .watchPositions(TravelMode.car)
+          .listen(positions.add);
+
+      streamController.add(_FakeGeolocator.positionAt(now));
+      await _flushAsync();
+      expect(positions.single.precision, LocationPrecision.precise);
+
+      platform.accuracyStatus = LocationAccuracyStatus.reduced;
+      now = now.add(const Duration(seconds: 2));
+      streamController.add(_FakeGeolocator.positionAt(now));
+      await _flushAsync();
+
+      expect(positions.last.precision, LocationPrecision.reduced);
+      expect(platform.locationAccuracyCalls, greaterThanOrEqualTo(2));
+
+      await subscription.cancel();
+      await streamController.close();
+    },
+  );
+
   test('uses distinct distance filters for walking and driving', () async {
     service.watchPositions(TravelMode.pedestrian).listen((_) {});
     expect(platform.lastSettings?.distanceFilter, 3);
@@ -114,8 +148,10 @@ class _FakeGeolocator extends GeolocatorPlatform {
   LocationPermission requestedPermission = LocationPermission.whileInUse;
   Object? positionError;
   int requestCalls = 0;
+  int locationAccuracyCalls = 0;
   LocationSettings? lastSettings;
   LocationAccuracyStatus accuracyStatus = LocationAccuracyStatus.precise;
+  StreamController<Position>? positionStream;
 
   @override
   Future<bool> isLocationServiceEnabled() async => serviceEnabled;
@@ -130,7 +166,10 @@ class _FakeGeolocator extends GeolocatorPlatform {
   }
 
   @override
-  Future<LocationAccuracyStatus> getLocationAccuracy() async => accuracyStatus;
+  Future<LocationAccuracyStatus> getLocationAccuracy() async {
+    locationAccuracyCalls++;
+    return accuracyStatus;
+  }
 
   @override
   Future<Position> getCurrentPosition({
@@ -145,13 +184,13 @@ class _FakeGeolocator extends GeolocatorPlatform {
   @override
   Stream<Position> getPositionStream({LocationSettings? locationSettings}) {
     lastSettings = locationSettings;
-    return Stream.value(_position);
+    return positionStream?.stream ?? Stream.value(_position);
   }
 
-  static final Position _position = Position(
+  static Position positionAt(DateTime timestamp) => Position(
     latitude: 48.8566,
     longitude: 2.3522,
-    timestamp: DateTime.now(),
+    timestamp: timestamp,
     accuracy: 4,
     altitude: 35,
     altitudeAccuracy: 2,
@@ -160,4 +199,11 @@ class _FakeGeolocator extends GeolocatorPlatform {
     speed: 2,
     speedAccuracy: 1,
   );
+
+  static final Position _position = positionAt(DateTime.now());
+}
+
+Future<void> _flushAsync() async {
+  await Future<void>.delayed(Duration.zero);
+  await Future<void>.delayed(Duration.zero);
 }

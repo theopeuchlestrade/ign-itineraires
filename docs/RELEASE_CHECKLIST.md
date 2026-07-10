@@ -50,7 +50,9 @@ Duplicate this document for each version and keep the results with release notes
 - [ ] GPS on localhost and HTTPS
 - [ ] TTS and fallback message
 - [ ] Responsive mobile, tablet, and desktop
-- [ ] CSP allows only required hosts and geolocation is allowed for `self`
+- [ ] GitHub Pages CSP meta allows only required image and connection hosts
+- [ ] Container headers allow only required hosts and geolocation for `self`
+- [ ] `flutter_tts` still builds on iOS, or its Swift Package Manager warning has an accepted release note
 - [ ] Legal notice contains no release marker
 
 ## Real Android

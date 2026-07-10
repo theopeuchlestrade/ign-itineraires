@@ -1,3 +1,5 @@
+import 'dart:convert';
+
 import 'package:flutter_test/flutter_test.dart';
 import 'package:ign_itineraires/src/features/routing/data/local_route_store.dart';
 import 'package:ign_itineraires/src/features/routing/domain/routing_models.dart';
@@ -34,5 +36,38 @@ void main() {
     await store.clearRecents();
 
     expect(await store.loadRecents(), isEmpty);
+  });
+
+  test('ignores corrupted local entries without losing valid ones', () async {
+    final favorite = const Place(label: 'A', latitude: 48, longitude: 2);
+    final recent = RecentRoute(
+      start: favorite,
+      destination: const Place(label: 'B', latitude: 49, longitude: 3),
+      mode: TravelMode.pedestrian,
+      distanceMeters: 1200,
+      durationSeconds: 900,
+      createdAt: DateTime.utc(2026),
+    );
+    SharedPreferences.setMockInitialValues({
+      'favorite_places_v1': [
+        jsonEncode(favorite.toJson()),
+        jsonEncode({'label': 'Broken', 'latitude': 'north', 'longitude': 2}),
+        '{not-json',
+      ],
+      'recent_routes_v1': [
+        jsonEncode(recent.toJson()),
+        jsonEncode({...recent.toJson(), 'mode': 'spaceship'}),
+        '[]',
+      ],
+    });
+    store = SharedPreferencesRouteStore();
+
+    final favorites = await store.loadFavorites();
+    final recents = await store.loadRecents();
+
+    expect(favorites, [favorite]);
+    expect(recents, hasLength(1));
+    expect(recents.single.destination.label, recent.destination.label);
+    expect(recents.single.mode, recent.mode);
   });
 }

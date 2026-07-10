@@ -88,9 +88,11 @@ Application-owned HTTP traffic is built only for `data.geopf.fr`. Google and
 Apple URLs are created only after an explicit external-navigation action, and
 the configured Map host only when a native user opens the legal notice.
 The endpoint registry is centralized in the source code and covered by tests.
-On the GitHub Pages deployment, the Content Security Policy enforces the
-corresponding network boundary. An installed system or browser speech engine
-can process spoken instruction text locally or remotely.
+On the GitHub Pages deployment, a static Content Security Policy meta tag
+limits web image and connection targets to the documented boundary. The
+container deployment also sends HTTP security headers, including the same
+network boundary. An installed system or browser speech engine can process
+spoken instruction text locally or remotely.
 
 ## Development Guarantees
 
