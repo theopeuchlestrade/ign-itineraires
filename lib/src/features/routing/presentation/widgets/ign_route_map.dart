@@ -137,7 +137,7 @@ class _IgnRouteMapState extends State<IgnRouteMap> {
           RichAttributionWidget(
             alignment: AttributionAlignment.bottomLeft,
             attributions: [
-              TextSourceAttribution('© IGN – cartes.gouv.fr', onTap: () {}),
+              const TextSourceAttribution('© IGN – cartes.gouv.fr'),
             ],
           ),
           Positioned(

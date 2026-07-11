@@ -130,6 +130,17 @@ void main() {
     );
   });
 
+  test('rejects a valid JSON response whose root is not an object', () async {
+    final api = GeoplateformeApi(
+      client: MockClient((_) async => http.Response('[]', 200)),
+    );
+
+    expect(
+      () => api.searchPlaces('Paris'),
+      throwsA(isA<GeoplateformeException>()),
+    );
+  });
+
   test('turns request timeouts into a useful message', () async {
     final pending = Completer<http.Response>();
     final api = GeoplateformeApi(

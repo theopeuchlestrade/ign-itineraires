@@ -166,9 +166,12 @@ class GeoplateformeApi implements GeoplateformeGateway {
 
   Map<String, dynamic> _decodeObject(http.Response response) {
     try {
-      return jsonDecode(utf8.decode(response.bodyBytes))
-          as Map<String, dynamic>;
-    } on FormatException {
+      final decoded = jsonDecode(utf8.decode(response.bodyBytes));
+      if (decoded is! Map<String, dynamic>) {
+        throw const FormatException('Expected a JSON object');
+      }
+      return decoded;
+    } on FormatException catch (_) {
       throw const GeoplateformeException(
         'Réponse inattendue du service cartes.gouv.fr.',
       );

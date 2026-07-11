@@ -1,6 +1,6 @@
 import 'dart:io';
 
-const minimumCoverage = 80.0;
+const minimumCoverage = 90.0;
 
 void main(List<String> arguments) {
   final file = File(arguments.isEmpty ? 'coverage/lcov.info' : arguments.first);

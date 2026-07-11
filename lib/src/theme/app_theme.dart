@@ -1,10 +1,9 @@
 import 'package:flutter/material.dart';
 
-class CompanyPalette {
-  // DSFR Colors - Système de Design de l'État
-  static const primary = Color(0xFF000091); // Bleu Marianne
-  static const secondary = Color(0xFFE1000F); // Rouge Marianne
-  static const accent = Color(0xFF6A6A6A); // Gris G500
+class AppPalette {
+  static const primary = Color(0xFF255F85);
+  static const secondary = Color(0xFFB24C63);
+  static const accent = Color(0xFF5B6B7A);
 
   // Text colors
   static const lightText = Color(0xFF000000); // Noir pour le mode clair
@@ -15,23 +14,17 @@ class CompanyPalette {
   static const darkSurface = Color(0xFF1E1E1E); // Fond sombre
   static const darkSurfaceRaised = Color(0xFF2D2D2D); // Surface élevée sombre
 
-  // Background colors (solid, no gradients per DSFR)
+  // Background colors
   static const lightBackground = Color(0xFFFFFFFF); // Fond blanc
   static const darkBackground = Color(0xFF121212); // Fond sombre
 
   // Card colors (solid colors)
-  static const lightCard = Color(0xFF000091); // Bleu Marianne pour les cartes
-  static const darkCard = Color(
-    0xFF3A3AFF,
-  ); // Bleu France 125 - DSFR background-action-high-blue-france
+  static const lightCard = primary;
+  static const darkCard = Color(0xFF72B5E3);
 
   // Button colors (solid colors)
-  static const lightButton = Color(
-    0xFF000091,
-  ); // Bleu Marianne pour les boutons
-  static const darkButton = Color(
-    0xFFE1000F,
-  ); // Rouge Marianne pour les boutons sombres
+  static const lightButton = primary;
+  static const darkButton = Color(0xFFE2899E);
 
   // Utility methods
   static Color background(Brightness brightness) =>
@@ -44,32 +37,31 @@ class CompanyPalette {
       brightness == Brightness.dark ? darkButton : lightButton;
 }
 
-ThemeData buildCompanyTheme(Brightness brightness) {
+ThemeData buildAppTheme(Brightness brightness) {
   final isDark = brightness == Brightness.dark;
-  final textColor = isDark ? CompanyPalette.darkText : CompanyPalette.lightText;
+  final textColor = isDark ? AppPalette.darkText : AppPalette.lightText;
   final surface = isDark
-      ? CompanyPalette.darkSurfaceRaised
-      : CompanyPalette.lightSurface;
+      ? AppPalette.darkSurfaceRaised
+      : AppPalette.lightSurface;
   final mutedText = textColor.withValues(alpha: isDark ? 0.72 : 0.60);
 
-  // DSFR Color Scheme
   final scheme = ColorScheme.fromSeed(
-    seedColor: CompanyPalette.primary,
+    seedColor: AppPalette.primary,
     brightness: brightness,
-    primary: CompanyPalette.primary, // Bleu Marianne #000091
-    secondary: CompanyPalette.secondary, // Rouge Marianne #E1000F
-    tertiary: CompanyPalette.accent, // Gris G500 #6A6A6A
+    primary: isDark ? const Color(0xFF9ACBEB) : AppPalette.primary,
+    secondary: isDark ? const Color(0xFFFFB1C2) : AppPalette.secondary,
+    tertiary: AppPalette.accent,
     surface: surface,
     onSurface: textColor,
     onSurfaceVariant: mutedText,
     onPrimary: Colors.white,
     onSecondary: Colors.white,
     onTertiary: Colors.white,
-    error: CompanyPalette.secondary, // Rouge Marianne pour les erreurs
+    error: isDark ? const Color(0xFFFFB4AB) : const Color(0xFFBA1A1A),
     onError: Colors.white,
     surfaceContainerLowest: isDark
-        ? CompanyPalette.darkSurface
-        : CompanyPalette.lightSurface,
+        ? AppPalette.darkSurface
+        : AppPalette.lightSurface,
     surfaceContainerLow: isDark
         ? const Color(0xFF2D2D2D)
         : const Color(0xFFF5F5F5),
@@ -82,10 +74,8 @@ ThemeData buildCompanyTheme(Brightness brightness) {
     outline: isDark ? const Color(0xFF6A6A6A) : const Color(0xFF6A6A6A),
     outlineVariant: isDark ? const Color(0xFF4A4A4A) : const Color(0xFFB0B0B0),
     primaryContainer: isDark
-        ? const Color(
-            0xFF3A3AFF,
-          ) // Bleu France 125 - DSFR background-action-high
-        : const Color(0xFFE3F2FD),
+        ? const Color(0xFF174E71)
+        : const Color(0xFFCBE6F8),
     secondaryContainer: isDark
         ? const Color(0xFF7C0000)
         : const Color(0xFFFFEBEE),
@@ -93,7 +83,7 @@ ThemeData buildCompanyTheme(Brightness brightness) {
   final baseTextTheme = ThemeData(
     useMaterial3: true,
     brightness: brightness,
-    fontFamily: 'Marianne',
+    fontFamily: 'Manrope',
   ).textTheme.apply(bodyColor: textColor, displayColor: textColor);
   final textTheme = baseTextTheme.copyWith(
     headlineSmall: baseTextTheme.headlineSmall?.copyWith(
@@ -114,8 +104,8 @@ ThemeData buildCompanyTheme(Brightness brightness) {
     colorScheme: scheme,
     textTheme: textTheme,
     scaffoldBackgroundColor: isDark
-        ? CompanyPalette.darkBackground
-        : CompanyPalette.lightBackground,
+        ? AppPalette.darkBackground
+        : AppPalette.lightBackground,
     appBarTheme: AppBarTheme(
       backgroundColor: surface.withValues(alpha: isDark ? 0.92 : 0.90),
       surfaceTintColor: surface,
@@ -144,16 +134,16 @@ ThemeData buildCompanyTheme(Brightness brightness) {
       ),
       focusedBorder: OutlineInputBorder(
         borderRadius: BorderRadius.circular(16),
-        borderSide: const BorderSide(color: CompanyPalette.primary, width: 1.6),
+        borderSide: const BorderSide(color: AppPalette.primary, width: 1.6),
       ),
-      prefixIconColor: CompanyPalette.primary,
+      prefixIconColor: AppPalette.primary,
     ),
     filledButtonTheme: FilledButtonThemeData(
       style: FilledButton.styleFrom(
         padding: const EdgeInsets.symmetric(vertical: 15, horizontal: 18),
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
         textStyle: const TextStyle(
-          fontFamily: 'Marianne',
+          fontFamily: 'Manrope',
           fontWeight: FontWeight.w700,
         ),
       ),
@@ -174,8 +164,8 @@ ThemeData buildCompanyTheme(Brightness brightness) {
   );
 }
 
-class CompanyBackground extends StatelessWidget {
-  const CompanyBackground({super.key, required this.child});
+class AppBackground extends StatelessWidget {
+  const AppBackground({super.key, required this.child});
 
   final Widget child;
 
@@ -183,19 +173,14 @@ class CompanyBackground extends StatelessWidget {
   Widget build(BuildContext context) {
     final brightness = Theme.of(context).brightness;
     return DecoratedBox(
-      decoration: BoxDecoration(color: CompanyPalette.background(brightness)),
-      child: Stack(
-        children: [
-          // Removed glow effects for DSFR compliance - using solid colors
-          child,
-        ],
-      ),
+      decoration: BoxDecoration(color: AppPalette.background(brightness)),
+      child: child,
     );
   }
 }
 
-class CompanyLogoMark extends StatelessWidget {
-  const CompanyLogoMark({super.key, this.size = 36});
+class AppLogoMark extends StatelessWidget {
+  const AppLogoMark({super.key, this.size = 36});
 
   final double size;
 
@@ -206,11 +191,11 @@ class CompanyLogoMark extends StatelessWidget {
       width: size,
       height: size,
       decoration: BoxDecoration(
-        color: CompanyPalette.card(brightness),
+        color: AppPalette.card(brightness),
         borderRadius: BorderRadius.circular(size * 0.30),
         boxShadow: [
           BoxShadow(
-            color: CompanyPalette.primary.withValues(alpha: 0.22),
+            color: AppPalette.primary.withValues(alpha: 0.22),
             blurRadius: 10,
             offset: const Offset(0, 4),
           ),
@@ -221,8 +206,8 @@ class CompanyLogoMark extends StatelessWidget {
   }
 }
 
-class CompanyGradientButton extends StatelessWidget {
-  const CompanyGradientButton({
+class AppPrimaryButton extends StatelessWidget {
+  const AppPrimaryButton({
     super.key,
     required this.onPressed,
     required this.loading,
@@ -240,13 +225,13 @@ class CompanyGradientButton extends StatelessWidget {
     return DecoratedBox(
       decoration: BoxDecoration(
         color: enabled
-            ? CompanyPalette.button(brightness)
+            ? AppPalette.button(brightness)
             : Theme.of(context).colorScheme.surfaceContainerHighest,
         borderRadius: BorderRadius.circular(16),
         boxShadow: enabled
             ? [
                 BoxShadow(
-                  color: CompanyPalette.primary.withValues(alpha: 0.20),
+                  color: AppPalette.primary.withValues(alpha: 0.20),
                   blurRadius: 14,
                   offset: const Offset(0, 7),
                 ),

@@ -132,6 +132,18 @@ void main() {
     await harness.dispose();
   });
 
+  test('keeps the session voice choice when persistence fails', () async {
+    final harness = _Harness();
+    await harness.controller.start();
+    harness.store.saveVoiceError = StateError('disk full');
+
+    await harness.controller.toggleVoice();
+
+    expect(harness.controller.session.voiceEnabled, isFalse);
+    expect(harness.controller.session.message, contains('cette session'));
+    await harness.dispose();
+  });
+
   test(
     'falls back to visual guidance when browser speech is unavailable',
     () async {
@@ -232,10 +244,17 @@ class _FakeLocation implements DeviceLocationGateway {
   @override
   Stream<NavigationPosition> watchPositions(TravelMode mode) =>
       _positions.stream;
+
+  @override
+  Future<bool> openLocationSettings() async => true;
+
+  @override
+  Future<bool> openAppSettings() async => true;
 }
 
 class _FakeStore implements LocalRouteStore {
   bool voiceEnabled = true;
+  Object? saveVoiceError;
 
   @override
   Future<void> clearRecents() async {}
@@ -263,6 +282,7 @@ class _FakeStore implements LocalRouteStore {
 
   @override
   Future<void> saveVoiceEnabled(bool enabled) async {
+    if (saveVoiceError case final error?) throw error;
     voiceEnabled = enabled;
   }
 }

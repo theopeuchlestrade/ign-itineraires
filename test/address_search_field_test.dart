@@ -68,7 +68,46 @@ void main() {
     await tester.pump();
 
     expect(find.byType(ListTile), findsNothing);
+    expect(find.text('Recherche indisponible. Réessayez.'), findsOneWidget);
     expect(tester.takeException(), isNull);
+  });
+
+  testWidgets('ignores a response completed after a suggestion is selected', (
+    tester,
+  ) async {
+    final pending = Completer<List<Place>>();
+    var calls = 0;
+    await tester.pumpWidget(
+      _host((_) {
+        calls++;
+        return calls == 1 ? Future.value(const [parisStart]) : pending.future;
+      }),
+    );
+
+    await tester.enterText(find.byType(TextField), 'Paris');
+    await tester.pump(const Duration(milliseconds: 350));
+    await tester.pump();
+    await tester.enterText(find.byType(TextField), 'Bastille');
+    await tester.pump(const Duration(milliseconds: 350));
+    await tester.tap(find.text(parisStart.label));
+    await tester.pump();
+
+    pending.complete(const [parisDestination]);
+    await tester.pump();
+
+    expect(find.text(parisDestination.label), findsNothing);
+    expect(find.text(parisStart.label), findsOneWidget);
+    await tester.pump(const Duration(milliseconds: 180));
+  });
+
+  testWidgets('announces an empty result', (tester) async {
+    await tester.pumpWidget(_host((_) async => const []));
+
+    await tester.enterText(find.byType(TextField), 'Paris');
+    await tester.pump(const Duration(milliseconds: 350));
+    await tester.pump();
+
+    expect(find.text('Aucun résultat.'), findsOneWidget);
   });
 }
 

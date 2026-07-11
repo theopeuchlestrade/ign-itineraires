@@ -7,8 +7,12 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:ign_itineraires/src/app.dart';
+import 'package:ign_itineraires/src/features/routing/domain/routing_models.dart';
+import 'package:ign_itineraires/src/features/routing/presentation/navigation_page.dart';
+import 'package:ign_itineraires/src/theme/app_theme.dart';
 
 import 'support/fakes.dart';
+import 'support/test_fixtures.dart';
 
 void main() {
   final defaultComparator = goldenFileComparator;
@@ -18,12 +22,6 @@ void main() {
       Uri.file('${Directory.current.path}/test/app_responsive_test.dart'),
       tolerance: 0.05,
     );
-    await (FontLoader('Marianne')
-          ..addFont(rootBundle.load('assets/fonts/Marianne-Regular.otf'))
-          ..addFont(rootBundle.load('assets/fonts/Marianne-Medium.otf'))
-          ..addFont(rootBundle.load('assets/fonts/Marianne-Bold.otf'))
-          ..addFont(rootBundle.load('assets/fonts/Marianne-Light.otf')))
-        .load();
     await (FontLoader('Manrope')..addFont(
           rootBundle.load('assets/fonts/Manrope-VariableFont_wght.ttf'),
         ))
@@ -86,6 +84,73 @@ void main() {
       expect(tester.takeException(), isNull);
       await expectLater(
         find.byType(Scaffold).first,
+        matchesGoldenFile('goldens/${goldenCase.name}.png'),
+      );
+    });
+  }
+
+  final navigationCases = <_GoldenCase>[
+    const _GoldenCase(
+      name: 'navigation_mobile_light',
+      size: Size(390, 844),
+      brightness: Brightness.light,
+    ),
+    const _GoldenCase(
+      name: 'navigation_landscape_dark',
+      size: Size(844, 390),
+      brightness: Brightness.dark,
+    ),
+    const _GoldenCase(
+      name: 'navigation_tablet_light',
+      size: Size(1024, 768),
+      brightness: Brightness.light,
+    ),
+    const _GoldenCase(
+      name: 'navigation_mobile_large_text_dark',
+      size: Size(390, 844),
+      brightness: Brightness.dark,
+      textScale: 2,
+    ),
+  ];
+
+  for (final goldenCase in navigationCases) {
+    testWidgets('${goldenCase.name} has no overflow and matches golden', (
+      tester,
+    ) async {
+      final harness = TestAppHarness();
+      await tester.binding.setSurfaceSize(goldenCase.size);
+      tester.binding.platformDispatcher.platformBrightnessTestValue =
+          goldenCase.brightness;
+      tester.binding.platformDispatcher.textScaleFactorTestValue =
+          goldenCase.textScale;
+      addTearDown(() async {
+        tester.binding.platformDispatcher.clearPlatformBrightnessTestValue();
+        tester.binding.platformDispatcher.clearTextScaleFactorTestValue();
+        await tester.binding.setSurfaceSize(null);
+        await harness.dispose();
+      });
+
+      await tester.pumpWidget(
+        MaterialApp(
+          theme: buildAppTheme(Brightness.light),
+          darkTheme: buildAppTheme(Brightness.dark),
+          themeMode: goldenCase.brightness == Brightness.dark
+              ? ThemeMode.dark
+              : ThemeMode.light,
+          home: NavigationPage(
+            destination: parisDestination,
+            mode: TravelMode.car,
+            dependencies: harness.dependencies,
+          ),
+        ),
+      );
+      for (var frame = 0; frame < 5; frame++) {
+        await tester.pump(const Duration(milliseconds: 50));
+      }
+
+      expect(tester.takeException(), isNull);
+      await expectLater(
+        find.byType(Scaffold),
         matchesGoldenFile('goldens/${goldenCase.name}.png'),
       );
     });
