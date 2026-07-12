@@ -13,7 +13,7 @@ fi
 
 git filter-repo --force --invert-paths \
   --path-glob 'assets/fonts/Marianne-*.otf' \
-  --path-glob '**/.!*!'
+  --path-regex '(^|.*/)\.![^/]*!.*$'
 
 if git rev-list --objects --all | grep -E 'assets/fonts/Marianne-|/\.![^/]*!' >/dev/null; then
   echo "Restricted paths remain in rewritten history." >&2
