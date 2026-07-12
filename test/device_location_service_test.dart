@@ -49,9 +49,9 @@ void main() {
       service.currentPosition,
       throwsA(
         isA<DeviceLocationException>().having(
-          (error) => error.permanentlyDenied,
-          'permanentlyDenied',
-          isTrue,
+          (error) => error.recovery,
+          'recovery',
+          LocationRecovery.openAppSettings,
         ),
       ),
     );

@@ -10,7 +10,7 @@ import 'package:ign_itineraires/src/features/routing/domain/routing_models.dart'
 import 'package:ign_itineraires/src/features/routing/presentation/navigation_controller.dart';
 import 'package:ign_itineraires/src/features/routing/presentation/widgets/adaptive_map_interaction.dart';
 import 'package:ign_itineraires/src/features/routing/presentation/widgets/ign_route_map.dart';
-import 'package:ign_itineraires/src/theme/company_theme.dart';
+import 'package:ign_itineraires/src/theme/app_theme.dart';
 
 class NavigationPage extends StatefulWidget {
   const NavigationPage({
@@ -94,7 +94,7 @@ class _NavigationPageState extends State<NavigationPage>
             ),
             title: Row(
               children: [
-                const CompanyLogoMark(size: 32),
+                const AppLogoMark(size: 32),
                 const SizedBox(width: 10),
                 Expanded(
                   child: Text(
@@ -132,26 +132,34 @@ class _NavigationPageState extends State<NavigationPage>
         message: session.message ?? 'Le guidage n’a pas pu démarrer.',
         onClose: () => Navigator.pop(context),
         onExternal: session.position == null ? null : _openExternal,
+        onRecovery: session.locationRecovery == null
+            ? null
+            : _openLocationSettings,
       );
     }
     if (session.route == null || session.position == null) {
-      return CompanyBackground(
-        child: Center(
-          child: Card(
-            child: Padding(
-              padding: const EdgeInsets.all(28),
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  const CircularProgressIndicator(),
-                  const SizedBox(height: 18),
-                  Text(
-                    session.status == NavigationStatus.acquiringPosition
-                        ? 'Recherche de votre position…'
-                        : 'Calcul du trajet depuis votre position…',
-                    textAlign: TextAlign.center,
+      return AppBackground(
+        child: SafeArea(
+          child: SingleChildScrollView(
+            padding: const EdgeInsets.all(24),
+            child: Center(
+              child: Card(
+                child: Padding(
+                  padding: const EdgeInsets.all(28),
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      const CircularProgressIndicator(),
+                      const SizedBox(height: 18),
+                      Text(
+                        session.status == NavigationStatus.acquiringPosition
+                            ? 'Recherche de votre position…'
+                            : 'Calcul du trajet depuis votre position…',
+                        textAlign: TextAlign.center,
+                      ),
+                    ],
                   ),
-                ],
+                ),
               ),
             ),
           ),
@@ -170,61 +178,82 @@ class _NavigationPageState extends State<NavigationPage>
         ),
         SafeArea(
           minimum: const EdgeInsets.all(12),
-          child: Column(
-            children: [
-              _InstructionBanner(session: session),
-              const SizedBox(height: 8),
-              Align(
-                alignment: Alignment.centerRight,
-                child: _GpsSignalBadge(session: session),
-              ),
-              if (session.message != null) ...[
-                const SizedBox(height: 8),
-                _NavigationMessage(message: session.message!),
-              ],
-              const Spacer(),
-              _NavigationControls(
-                session: session,
-                onRecenter: () => _controller.setFollowingUser(true),
-                onExternal: _openExternal,
-                onStop: _confirmStop,
-              ),
-            ],
+          child: LayoutBuilder(
+            builder: (context, constraints) {
+              final compact =
+                  constraints.maxHeight < 600 ||
+                  MediaQuery.textScalerOf(context).scale(1) >= 1.5;
+              return Column(
+                children: [
+                  Flexible(
+                    child: SingleChildScrollView(
+                      child: Column(
+                        children: [
+                          _InstructionBanner(session: session),
+                          const SizedBox(height: 8),
+                          Align(
+                            alignment: Alignment.centerRight,
+                            child: _GpsSignalBadge(session: session),
+                          ),
+                          if (session.message != null) ...[
+                            const SizedBox(height: 8),
+                            _NavigationMessage(message: session.message!),
+                          ],
+                        ],
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: 8),
+                  _NavigationControls(
+                    session: session,
+                    compact: compact,
+                    onRecenter: () => _controller.setFollowingUser(true),
+                    onExternal: _openExternal,
+                    onStop: _confirmStop,
+                  ),
+                ],
+              );
+            },
           ),
         ),
         if (session.status == NavigationStatus.arrived)
           Positioned.fill(
             child: ColoredBox(
               color: Colors.black54,
-              child: Center(
-                child: Card(
-                  margin: const EdgeInsets.all(28),
-                  child: Padding(
-                    padding: const EdgeInsets.all(28),
-                    child: Column(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        const Icon(
-                          Icons.flag_circle_rounded,
-                          color: CompanyPalette.primary,
-                          size: 64,
+              child: SafeArea(
+                child: SingleChildScrollView(
+                  padding: const EdgeInsets.all(28),
+                  child: Center(
+                    child: Card(
+                      margin: EdgeInsets.zero,
+                      child: Padding(
+                        padding: const EdgeInsets.all(28),
+                        child: Column(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            const Icon(
+                              Icons.flag_circle_rounded,
+                              color: AppPalette.primary,
+                              size: 64,
+                            ),
+                            const SizedBox(height: 16),
+                            Text(
+                              'Vous êtes arrivé',
+                              style: Theme.of(context).textTheme.headlineSmall,
+                            ),
+                            const SizedBox(height: 8),
+                            Text(
+                              widget.destination.label,
+                              textAlign: TextAlign.center,
+                            ),
+                            const SizedBox(height: 22),
+                            FilledButton(
+                              onPressed: () => Navigator.pop(context),
+                              child: const Text('Terminer'),
+                            ),
+                          ],
                         ),
-                        const SizedBox(height: 16),
-                        Text(
-                          'Vous êtes arrivé',
-                          style: Theme.of(context).textTheme.headlineSmall,
-                        ),
-                        const SizedBox(height: 8),
-                        Text(
-                          widget.destination.label,
-                          textAlign: TextAlign.center,
-                        ),
-                        const SizedBox(height: 22),
-                        FilledButton(
-                          onPressed: () => Navigator.pop(context),
-                          child: const Text('Terminer'),
-                        ),
-                      ],
+                      ),
                     ),
                   ),
                 ),
@@ -291,6 +320,15 @@ class _NavigationPageState extends State<NavigationPage>
     if (!opened && mounted) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('Impossible d’ouvrir le guidage.')),
+      );
+    }
+  }
+
+  Future<void> _openLocationSettings() async {
+    final opened = await _controller.openLocationRecovery();
+    if (!opened && mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Impossible d’ouvrir les réglages.')),
       );
     }
   }
@@ -404,7 +442,7 @@ class _LiveNavigationMapState extends State<_LiveNavigationMap> {
             polylines: [
               Polyline(
                 points: route.points,
-                color: CompanyPalette.primary,
+                color: AppPalette.primary,
                 strokeWidth: 7,
                 borderColor: Colors.white,
                 borderStrokeWidth: 2,
@@ -417,8 +455,8 @@ class _LiveNavigationMapState extends State<_LiveNavigationMap> {
                 point: position,
                 radius: session.position!.accuracyMeters,
                 useRadiusInMeter: true,
-                color: CompanyPalette.primary.withValues(alpha: 0.12),
-                borderColor: CompanyPalette.primary.withValues(alpha: 0.45),
+                color: AppPalette.primary.withValues(alpha: 0.12),
+                borderColor: AppPalette.primary.withValues(alpha: 0.45),
                 borderStrokeWidth: 1.5,
               ),
             ],
@@ -432,7 +470,7 @@ class _LiveNavigationMapState extends State<_LiveNavigationMap> {
                 height: 48,
                 child: const Icon(
                   Icons.flag_circle_rounded,
-                  color: CompanyPalette.accent,
+                  color: AppPalette.accent,
                   size: 44,
                 ),
               ),
@@ -447,9 +485,7 @@ class _LiveNavigationMapState extends State<_LiveNavigationMap> {
                       180,
                   child: Container(
                     decoration: BoxDecoration(
-                      color: CompanyPalette.button(
-                        Theme.of(context).brightness,
-                      ),
+                      color: AppPalette.button(Theme.of(context).brightness),
                       shape: BoxShape.circle,
                       border: Border.all(color: Colors.white, width: 3),
                       boxShadow: const [
@@ -469,7 +505,7 @@ class _LiveNavigationMapState extends State<_LiveNavigationMap> {
           RichAttributionWidget(
             alignment: AttributionAlignment.bottomLeft,
             attributions: [
-              TextSourceAttribution('© IGN – cartes.gouv.fr', onTap: () {}),
+              const TextSourceAttribution('© IGN – cartes.gouv.fr'),
             ],
           ),
           Positioned(
@@ -520,7 +556,7 @@ class _InstructionBanner extends StatelessWidget {
               width: 54,
               height: 54,
               decoration: BoxDecoration(
-                color: CompanyPalette.card(Theme.of(context).brightness),
+                color: AppPalette.card(Theme.of(context).brightness),
                 borderRadius: BorderRadius.circular(17),
               ),
               child: Icon(
@@ -543,8 +579,6 @@ class _InstructionBanner extends StatelessWidget {
                             session.remainingDistanceMeters > 80
                         ? 'Continuez vers votre destination'
                         : step?.instruction ?? 'Suivez l’itinéraire',
-                    maxLines: 2,
-                    overflow: TextOverflow.ellipsis,
                   ),
                 ],
               ),
@@ -570,12 +604,14 @@ class _InstructionBanner extends StatelessWidget {
 class _NavigationControls extends StatelessWidget {
   const _NavigationControls({
     required this.session,
+    required this.compact,
     required this.onRecenter,
     required this.onExternal,
     required this.onStop,
   });
 
   final NavigationSession session;
+  final bool compact;
   final VoidCallback onRecenter;
   final VoidCallback onExternal;
   final VoidCallback onStop;
@@ -588,21 +624,27 @@ class _NavigationControls extends StatelessWidget {
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            Row(
+            Wrap(
+              alignment: WrapAlignment.spaceEvenly,
+              spacing: 8,
+              runSpacing: 8,
               children: [
-                Expanded(
+                SizedBox(
+                  width: compact ? 82 : 104,
                   child: _Metric(
                     label: 'Restant',
                     value: session.formattedRemainingDistance,
                   ),
                 ),
-                Expanded(
+                SizedBox(
+                  width: compact ? 82 : 104,
                   child: _Metric(
                     label: 'Durée',
                     value: session.formattedRemainingDuration,
                   ),
                 ),
-                Expanded(
+                SizedBox(
+                  width: compact ? 82 : 104,
                   child: _Metric(
                     label: 'Arrivée',
                     value: _arrivalTime(session.remainingDurationSeconds),
@@ -611,22 +653,22 @@ class _NavigationControls extends StatelessWidget {
               ],
             ),
             const SizedBox(height: 12),
-            Row(
+            Wrap(
+              alignment: WrapAlignment.end,
+              crossAxisAlignment: WrapCrossAlignment.center,
+              spacing: 8,
+              runSpacing: 8,
               children: [
-                Expanded(
-                  child: OutlinedButton.icon(
-                    onPressed: session.followingUser ? null : onRecenter,
-                    icon: const Icon(Icons.my_location),
-                    label: const Text('Recentrer'),
-                  ),
+                OutlinedButton.icon(
+                  onPressed: session.followingUser ? null : onRecenter,
+                  icon: const Icon(Icons.my_location),
+                  label: const Text('Recentrer'),
                 ),
-                const SizedBox(width: 8),
                 IconButton.filledTonal(
                   tooltip: 'Ouvrir dans une autre application',
                   onPressed: onExternal,
                   icon: const Icon(Icons.open_in_new),
                 ),
-                const SizedBox(width: 8),
                 IconButton.filled(
                   tooltip: 'Arrêter',
                   onPressed: onStop,
@@ -725,7 +767,7 @@ class _NavigationMessage extends StatelessWidget {
           children: [
             const Icon(Icons.info_outline, size: 18),
             const SizedBox(width: 8),
-            Expanded(child: Text(message)),
+            Expanded(child: Semantics(liveRegion: true, child: Text(message))),
           ],
         ),
       ),
@@ -738,44 +780,60 @@ class _NavigationFailure extends StatelessWidget {
     required this.message,
     required this.onClose,
     this.onExternal,
+    this.onRecovery,
   });
 
   final String message;
   final VoidCallback onClose;
   final VoidCallback? onExternal;
+  final VoidCallback? onRecovery;
 
   @override
   Widget build(BuildContext context) {
-    return CompanyBackground(
-      child: Center(
-        child: Card(
-          margin: const EdgeInsets.all(24),
-          child: Padding(
-            padding: const EdgeInsets.all(28),
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Icon(
-                  Icons.location_off_outlined,
-                  size: 52,
-                  color: Theme.of(context).colorScheme.error,
+    return AppBackground(
+      child: SafeArea(
+        child: SingleChildScrollView(
+          padding: const EdgeInsets.all(24),
+          child: Center(
+            child: Card(
+              margin: EdgeInsets.zero,
+              child: Padding(
+                padding: const EdgeInsets.all(28),
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Icon(
+                      Icons.location_off_outlined,
+                      size: 52,
+                      color: Theme.of(context).colorScheme.error,
+                    ),
+                    const SizedBox(height: 16),
+                    Text(
+                      'Guidage indisponible',
+                      style: Theme.of(context).textTheme.headlineSmall,
+                    ),
+                    const SizedBox(height: 10),
+                    Semantics(
+                      liveRegion: true,
+                      child: Text(message, textAlign: TextAlign.center),
+                    ),
+                    const SizedBox(height: 22),
+                    if (onRecovery != null)
+                      FilledButton.icon(
+                        onPressed: onRecovery,
+                        icon: const Icon(Icons.settings_outlined),
+                        label: const Text('Ouvrir les réglages'),
+                      ),
+                    if (onExternal != null)
+                      OutlinedButton.icon(
+                        onPressed: onExternal,
+                        icon: const Icon(Icons.open_in_new),
+                        label: const Text('Ouvrir dans une autre app'),
+                      ),
+                    TextButton(onPressed: onClose, child: const Text('Retour')),
+                  ],
                 ),
-                const SizedBox(height: 16),
-                Text(
-                  'Guidage indisponible',
-                  style: Theme.of(context).textTheme.headlineSmall,
-                ),
-                const SizedBox(height: 10),
-                Text(message, textAlign: TextAlign.center),
-                const SizedBox(height: 22),
-                if (onExternal != null)
-                  OutlinedButton.icon(
-                    onPressed: onExternal,
-                    icon: const Icon(Icons.open_in_new),
-                    label: const Text('Ouvrir dans une autre app'),
-                  ),
-                TextButton(onPressed: onClose, child: const Text('Retour')),
-              ],
+              ),
             ),
           ),
         ),

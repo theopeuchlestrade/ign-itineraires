@@ -47,6 +47,22 @@ void main() {
     });
   });
 
+  test('native legal notice uses the GitHub Pages project path', () {
+    expect(
+      NetworkEndpoints.officialLegalNoticeUri.toString(),
+      'https://theopeuchlestrade.github.io/ign-itineraires/legal.html',
+    );
+    final legal = File('web/legal.html').readAsStringSync();
+    expect(legal, contains('<a href="./">Retour à IGN Itinéraires</a>'));
+  });
+
+  test('web shell declares French language and responsive metadata', () {
+    final index = File('web/index.html').readAsStringSync();
+    expect(index, contains('<html lang="fr">'));
+    expect(index, contains('name="viewport"'));
+    expect(index, contains('name="theme-color" content="#255F85"'));
+  });
+
   test('GitHub Pages CSP meta keeps web traffic on registered hosts', () {
     final html = File('web/index.html').readAsStringSync();
     final match = RegExp(

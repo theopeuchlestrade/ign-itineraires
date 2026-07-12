@@ -3,9 +3,9 @@
     "short_name": "IGN Itinéraires",
     "start_url": ".",
     "display": "standalone",
-    "background_color": "#000091",
-    "theme_color": "#000091",
-    "description": "Car and pedestrian routes powered by cartes.gouv.fr.",
+    "background_color": "#255F85",
+    "theme_color": "#255F85",
+    "description": "Itinéraires piéton et voiture avec cartes.gouv.fr.",
     "prefer_related_applications": false,
     "icons": [
         {

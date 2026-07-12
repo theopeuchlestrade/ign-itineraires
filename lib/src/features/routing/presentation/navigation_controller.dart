@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:math' as math;
 
 import 'package:flutter/foundation.dart';
 import 'package:ign_itineraires/src/features/routing/data/device_location_service.dart';
@@ -7,6 +8,7 @@ import 'package:ign_itineraires/src/features/routing/data/local_route_store.dart
 import 'package:ign_itineraires/src/features/routing/data/navigation_services.dart';
 import 'package:ign_itineraires/src/features/routing/domain/navigation_engine.dart';
 import 'package:ign_itineraires/src/features/routing/domain/navigation_models.dart';
+import 'package:ign_itineraires/src/features/routing/domain/navigation_policies.dart';
 import 'package:ign_itineraires/src/features/routing/domain/routing_models.dart';
 
 class NavigationController extends ChangeNotifier {
@@ -19,15 +21,17 @@ class NavigationController extends ChangeNotifier {
     required this.destination,
     required this.mode,
     DateTime Function()? now,
+    Duration Function(int attempt)? streamRetryDelay,
   }) : _now = now ?? DateTime.now,
+       _streamRetryDelay = streamRetryDelay ?? _defaultStreamRetryDelay,
        session = NavigationSession(
          status: NavigationStatus.acquiringPosition,
          destination: destination,
          mode: mode,
          voiceEnabled: true,
        ) {
-    _signalPolicy = _NavigationSignalPolicy(mode: mode, now: _now);
-    _deviationPolicy = _RouteDeviationPolicy(mode);
+    _signalPolicy = NavigationSignalPolicy(mode: mode, now: _now);
+    _deviationPolicy = RouteDeviationPolicy(mode);
     _speech.setErrorHandler(_handleSpeechError);
   }
 
@@ -39,14 +43,15 @@ class NavigationController extends ChangeNotifier {
   final SpeechGateway _speech;
   final WakeLockGateway _wakeLock;
   final DateTime Function() _now;
+  final Duration Function(int attempt) _streamRetryDelay;
 
   NavigationSession session;
   NavigationEngine? _engine;
   final GuidanceAnnouncementPlanner _announcementPlanner =
       GuidanceAnnouncementPlanner();
-  late final _NavigationSignalPolicy _signalPolicy;
-  late final _RouteDeviationPolicy _deviationPolicy;
-  final _ReroutePolicy _reroutePolicy = _ReroutePolicy();
+  late final NavigationSignalPolicy _signalPolicy;
+  late final RouteDeviationPolicy _deviationPolicy;
+  final ReroutePolicy _reroutePolicy = ReroutePolicy();
   StreamSubscription<NavigationPosition>? _positionSubscription;
   Timer? _signalWatchdog;
   double? _progressMeters;
@@ -57,6 +62,7 @@ class NavigationController extends ChangeNotifier {
   bool _handlingPosition = false;
   bool _foreground = true;
   bool _disposed = false;
+  int _streamRetryAttempts = 0;
 
   Future<void> start() async {
     final operation = ++_operationGeneration;
@@ -105,7 +111,7 @@ class NavigationController extends ChangeNotifier {
         operation: operation,
       );
     } on DeviceLocationException catch (error) {
-      _fail(error.message);
+      _fail(error.message, recovery: error.recovery);
     } on GeoplateformeException catch (error) {
       _fail(error.message);
     } catch (_) {
@@ -181,6 +187,7 @@ class NavigationController extends ChangeNotifier {
 
   void _queuePosition(NavigationPosition position, int operation) {
     if (!_canContinue(operation)) return;
+    _streamRetryAttempts = 0;
     _lastFixReceivedAt = _now();
     _pendingPosition = position;
     if (!_handlingPosition) {
@@ -382,16 +389,29 @@ class NavigationController extends ChangeNotifier {
       if (issue != null) throw DeviceLocationException(issue);
       await _reroute(position, operation: operation, force: true);
     } on DeviceLocationException catch (error) {
-      _fail(error.message);
+      _fail(error.message, recovery: error.recovery);
     }
   }
 
   Future<void> toggleVoice() async {
     final enabled = !session.voiceEnabled;
     _setSession(session.copyWith(voiceEnabled: enabled));
-    await _store.saveVoiceEnabled(enabled);
+    try {
+      await _store.saveVoiceEnabled(enabled);
+    } catch (_) {
+      _setSession(
+        session.copyWith(
+          message:
+              'La voix est modifiée pour cette session, mais la préférence n’a pas pu être enregistrée.',
+        ),
+      );
+    }
     if (!enabled) {
-      await _speech.stop();
+      try {
+        await _speech.stop();
+      } catch (_) {
+        // Muting remains effective for subsequent announcements.
+      }
       return;
     }
     final instruction = session.upcomingStep?.instruction;
@@ -414,7 +434,7 @@ class NavigationController extends ChangeNotifier {
     if (!_canContinue(operation)) return;
     _operationGeneration++;
     await _stopForegroundTracking();
-    await _wakeLock.disable();
+    await _stopSpeechAndWakeLock();
     _setSession(
       session.copyWith(
         status: NavigationStatus.arrived,
@@ -441,6 +461,9 @@ class NavigationController extends ChangeNotifier {
           _now().difference(lastFix) <= const Duration(seconds: 8)) {
         return;
       }
+      if (session.signalState == NavigationSignalState.degraded) {
+        return;
+      }
       _setSession(
         session.copyWith(
           signalState: NavigationSignalState.degraded,
@@ -464,7 +487,8 @@ class NavigationController extends ChangeNotifier {
         message: 'Signal GPS interrompu. Nouvelle tentative…',
       ),
     );
-    await Future<void>.delayed(const Duration(seconds: 2));
+    _streamRetryAttempts++;
+    await Future<void>.delayed(_streamRetryDelay(_streamRetryAttempts));
     if (_canContinue(operation)) await _subscribeToPositions(operation);
   }
 
@@ -527,7 +551,16 @@ class NavigationController extends ChangeNotifier {
     }
   }
 
-  void _fail(String message) {
+  Future<bool> openLocationRecovery() async {
+    final recovery = session.locationRecovery;
+    if (recovery == null) return false;
+    return switch (recovery) {
+      LocationRecovery.openLocationSettings => _location.openLocationSettings(),
+      LocationRecovery.openAppSettings => _location.openAppSettings(),
+    };
+  }
+
+  void _fail(String message, {LocationRecovery? recovery}) {
     _setSession(
       session.copyWith(
         status: NavigationStatus.error,
@@ -535,6 +568,7 @@ class NavigationController extends ChangeNotifier {
             ? NavigationSignalState.reduced
             : NavigationSignalState.interrupted,
         message: message,
+        locationRecovery: recovery,
       ),
     );
   }
@@ -559,135 +593,8 @@ class NavigationController extends ChangeNotifier {
   }
 }
 
-class _NavigationSignalPolicy {
-  _NavigationSignalPolicy({required this.mode, required this.now});
-
-  final TravelMode mode;
-  final DateTime Function() now;
-  int _rejectedFixes = 0;
-  int _recoveryFixes = 0;
-
-  String? issueFor(NavigationPosition position) {
-    if (position.precision == LocationPrecision.reduced) {
-      return 'Localisation approximative activée. Autorisez la position précise '
-          'dans les réglages ou utilisez une application GPS externe.';
-    }
-    if (position.isMocked && !kDebugMode) {
-      return 'Une position simulée a été détectée. Le guidage est suspendu.';
-    }
-    final age = now().difference(position.timestamp);
-    if (age > const Duration(seconds: 5) || age < const Duration(seconds: -2)) {
-      return 'La position GPS reçue est trop ancienne. Recherche d’un signal récent…';
-    }
-    final maximumAccuracy = mode == TravelMode.pedestrian ? 25.0 : 35.0;
-    if (!position.accuracyMeters.isFinite ||
-        position.accuracyMeters > maximumAccuracy) {
-      return 'Précision GPS insuffisante '
-          '(${position.accuracyMeters.round()} m). Guidage suspendu.';
-    }
-    return null;
-  }
-
-  NavigationSignalState reject({
-    required NavigationPosition position,
-    required NavigationSignalState currentSignalState,
-  }) {
-    _rejectedFixes++;
-    _recoveryFixes = 0;
-    if (position.precision == LocationPrecision.reduced) {
-      return NavigationSignalState.reduced;
-    }
-    return _rejectedFixes >= 3
-        ? NavigationSignalState.degraded
-        : currentSignalState;
-  }
-
-  bool needsRecoveryConfirmation(NavigationSignalState signalState) {
-    if (signalState != NavigationSignalState.degraded &&
-        signalState != NavigationSignalState.interrupted &&
-        signalState != NavigationSignalState.reduced) {
-      return false;
-    }
-    _recoveryFixes++;
-    return _recoveryFixes < 2;
-  }
-
-  void accept() {
-    _rejectedFixes = 0;
-    _recoveryFixes = 0;
-  }
-
-  void reset() {
-    _rejectedFixes = 0;
-    _recoveryFixes = 0;
-  }
-}
-
-class _RouteDeviationPolicy {
-  _RouteDeviationPolicy(this.mode);
-
-  final TravelMode mode;
-  int _offRouteFixes = 0;
-  int _reverseDirectionFixes = 0;
-  int _arrivalFixes = 0;
-  DateTime? _offRouteSince;
-
-  bool get hasArrived => _arrivalFixes >= 2;
-
-  void update({
-    required GuidanceUpdate update,
-    required NavigationPosition position,
-  }) {
-    final offRouteThreshold = mode == TravelMode.pedestrian ? 15.0 : 25.0;
-    final certainlyOffRoute =
-        update.distanceFromRouteMeters - position.accuracyMeters >
-        offRouteThreshold;
-    if (certainlyOffRoute) {
-      _offRouteFixes++;
-      _offRouteSince ??= position.timestamp;
-    } else {
-      _offRouteFixes = 0;
-      _offRouteSince = null;
-    }
-    _reverseDirectionFixes = update.reverseDirection
-        ? _reverseDirectionFixes + 1
-        : 0;
-    _arrivalFixes = update.arrived && position.accuracyMeters <= 20
-        ? _arrivalFixes + 1
-        : 0;
-  }
-
-  bool shouldReroute(DateTime timestamp) {
-    final offRouteSince = _offRouteSince;
-    final offRouteLongEnough =
-        offRouteSince != null &&
-        timestamp.difference(offRouteSince) >= const Duration(seconds: 4);
-    return (_offRouteFixes >= 3 && offRouteLongEnough) ||
-        _reverseDirectionFixes >= 3;
-  }
-
-  void clearOffRouteFixes() {
-    _offRouteFixes = 0;
-  }
-
-  void reset() {
-    _offRouteFixes = 0;
-    _reverseDirectionFixes = 0;
-    _arrivalFixes = 0;
-    _offRouteSince = null;
-  }
-}
-
-class _ReroutePolicy {
-  DateTime? _lastRerouteAt;
-
-  bool markAttempt(DateTime now, {required bool force}) {
-    if (!force &&
-        _lastRerouteAt != null &&
-        now.difference(_lastRerouteAt!) < const Duration(seconds: 20)) {
-      return false;
-    }
-    _lastRerouteAt = now;
-    return true;
-  }
+Duration _defaultStreamRetryDelay(int attempt) {
+  final exponent = math.min(attempt, 5).toInt();
+  final seconds = math.min(30, 1 << exponent).toInt();
+  return Duration(seconds: seconds);
 }

@@ -8,7 +8,7 @@ import 'package:ign_itineraires/src/features/routing/presentation/routing_contro
 import 'package:ign_itineraires/src/features/routing/presentation/widgets/address_search_field.dart';
 import 'package:ign_itineraires/src/features/routing/presentation/widgets/ign_route_map.dart';
 import 'package:ign_itineraires/src/network_endpoints.dart';
-import 'package:ign_itineraires/src/theme/company_theme.dart';
+import 'package:ign_itineraires/src/theme/app_theme.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 class RoutingPage extends StatefulWidget {
@@ -53,7 +53,7 @@ class _RoutingPageState extends State<RoutingPage> {
             titleSpacing: 20,
             title: Row(
               children: [
-                CompanyLogoMark(size: largeText ? 30 : 36),
+                AppLogoMark(size: largeText ? 30 : 36),
                 const SizedBox(width: 12),
                 Expanded(
                   child: Column(
@@ -347,7 +347,7 @@ class _RoutingPageState extends State<RoutingPage> {
   Future<void> _openLegalNotice() async {
     final uri = kIsWeb
         ? Uri.base.resolve('legal.html')
-        : Uri.https(NetworkEndpoints.officialMapHost, '/legal.html');
+        : NetworkEndpoints.officialLegalNoticeUri;
     await launchUrl(
       uri,
       mode: LaunchMode.externalApplication,
@@ -378,14 +378,14 @@ class _PlannerPanel extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    return CompanyBackground(
+    return AppBackground(
       child: ListView(
         padding: const EdgeInsets.fromLTRB(20, 20, 20, 32),
         children: [
           Text(
             'IGN ITINÉRAIRES',
             style: theme.textTheme.labelSmall?.copyWith(
-              color: CompanyPalette.primary,
+              color: AppPalette.primary,
               fontWeight: FontWeight.w800,
               letterSpacing: 1.1,
             ),
@@ -394,7 +394,7 @@ class _PlannerPanel extends StatelessWidget {
           Text('Préparer le trajet', style: theme.textTheme.headlineSmall),
           const SizedBox(height: 6),
           Text(
-            'Calcul souverain fondé sur les données routières de l’IGN.',
+            'Calcul d’itinéraire via les services publics cartes.gouv.fr.',
             style: theme.textTheme.bodyMedium?.copyWith(
               color: theme.colorScheme.onSurfaceVariant,
             ),
@@ -437,7 +437,7 @@ class _PlannerPanel extends StatelessWidget {
             },
           ),
           const SizedBox(height: 18),
-          CompanyGradientButton(
+          AppPrimaryButton(
             onPressed: controller.canCalculate ? controller.calculate : null,
             loading: controller.calculating,
             label: controller.calculating
@@ -449,6 +449,9 @@ class _PlannerPanel extends StatelessWidget {
             _InlineMessage(
               message: controller.message!,
               error: controller.messageIsError,
+              action: controller.locationRecovery == null
+                  ? null
+                  : controller.recoverLocation,
             ),
           ],
           if (controller.route != null) ...[
@@ -606,10 +609,15 @@ class _RouteSummary extends StatelessWidget {
 }
 
 class _InlineMessage extends StatelessWidget {
-  const _InlineMessage({required this.message, required this.error});
+  const _InlineMessage({
+    required this.message,
+    required this.error,
+    this.action,
+  });
 
   final String message;
   final bool error;
+  final VoidCallback? action;
 
   @override
   Widget build(BuildContext context) {
@@ -633,7 +641,20 @@ class _InlineMessage extends StatelessWidget {
             ),
             const SizedBox(width: 10),
             Expanded(
-              child: Text(message, style: TextStyle(color: onColor)),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Semantics(
+                    liveRegion: true,
+                    child: Text(message, style: TextStyle(color: onColor)),
+                  ),
+                  if (action != null)
+                    TextButton(
+                      onPressed: action,
+                      child: const Text('Ouvrir les réglages'),
+                    ),
+                ],
+              ),
             ),
           ],
         ),

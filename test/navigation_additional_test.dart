@@ -13,10 +13,12 @@ import 'support/test_fixtures.dart';
 void main() {
   late TestAppHarness harness;
   late NavigationController controller;
+  late List<int> retryAttempts;
   var now = routeStartPosition.timestamp;
 
   setUp(() {
     now = routeStartPosition.timestamp;
+    retryAttempts = [];
     harness = TestAppHarness();
     controller = NavigationController(
       harness.api,
@@ -27,6 +29,10 @@ void main() {
       destination: parisDestination,
       mode: TravelMode.car,
       now: () => now,
+      streamRetryDelay: (attempt) {
+        retryAttempts.add(attempt);
+        return Duration.zero;
+      },
     );
   });
 
@@ -57,6 +63,24 @@ void main() {
     );
   });
 
+  test('arrival completes even when wake-lock release fails', () async {
+    harness.location.current = navigationPosition(
+      48.8569,
+      2.3618,
+      timestamp: now,
+    );
+    await controller.start();
+    harness.wakeLock.disableError = StateError('wake lock unavailable');
+
+    harness.location.emit(arrivalPosition);
+    await Future<void>.delayed(Duration.zero);
+    harness.location.emit(arrivalPosition);
+    await Future<void>.delayed(Duration.zero);
+
+    expect(controller.session.status, NavigationStatus.arrived);
+    expect(controller.session.remainingDistanceMeters, 0);
+  });
+
   test('reports an interrupted GPS stream without losing the route', () async {
     await controller.start();
 
@@ -66,6 +90,19 @@ void main() {
     expect(controller.session.status, NavigationStatus.active);
     expect(controller.session.message, contains('Signal GPS interrompu'));
     expect(controller.session.route, urbanRoute);
+  });
+
+  test('backs off repeated GPS stream recovery attempts', () async {
+    await controller.start();
+
+    harness.location.emitError(Exception('first interruption'));
+    await Future<void>.delayed(Duration.zero);
+    await Future<void>.delayed(Duration.zero);
+    harness.location.emitError(Exception('second interruption'));
+    await Future<void>.delayed(Duration.zero);
+    await Future<void>.delayed(Duration.zero);
+
+    expect(retryAttempts, [1, 2]);
   });
 
   test('fails cleanly when fresh GPS is unavailable on resume', () async {

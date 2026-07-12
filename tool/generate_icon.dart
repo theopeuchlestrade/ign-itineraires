@@ -1,4 +1,4 @@
-// Script to generate app icons with DSFR colors
+// Script to generate app icons with the IGN Itinéraires palette.
 // Run with: dart run tool/generate_icon.dart
 
 import 'dart:io';
@@ -9,15 +9,14 @@ void main() {
   // Create a 1024x1024 image
   final image = Image(width: 1024, height: 1024);
 
-  // Bleu Marianne (#000091) - RGB: 0, 0, 145
-  final bleuMarianne = ColorRgb8(0, 0, 145);
+  final primary = ColorRgb8(37, 95, 133);
   final blanc = ColorRgb8(255, 255, 255);
-  final rougeMarianne = ColorRgb8(225, 0, 15);
+  final secondary = ColorRgb8(178, 76, 99);
 
-  // Fill with Bleu Marianne
+  // Fill with the primary brand color.
   for (var y = 0; y < image.height; y++) {
     for (var x = 0; x < image.width; x++) {
-      image.setPixel(x, y, bleuMarianne);
+      image.setPixel(x, y, primary);
     }
   }
 
@@ -28,8 +27,8 @@ void main() {
   // Draw center circle in white (radius 180)
   _drawFilledCircle(image, 512, 512, 180, blanc);
 
-  // Draw inner circle in Rouge Marianne (radius 120)
-  _drawFilledCircle(image, 512, 512, 120, rougeMarianne);
+  // Draw the inner route marker.
+  _drawFilledCircle(image, 512, 512, 120, secondary);
 
   // Save as PNG
   final pngBytes = encodePng(image);
@@ -55,7 +54,7 @@ void main() {
   _generateIOSIcons(image);
 
   // ignore: avoid_print
-  print('✅ All icons generated successfully with DSFR colors!');
+  print('✅ All icons generated successfully with the app palette!');
   // ignore: avoid_print
   print('   - App icon: assets/branding/map_icon.png (1024x1024)');
   // ignore: avoid_print

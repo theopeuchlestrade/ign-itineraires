@@ -18,7 +18,7 @@ Duplicate this document for each version and keep the results with release notes
 
 - [ ] Format and static analysis
 - [ ] Unit/widget/golden tests
-- [ ] Core coverage ≥ 80%
+- [ ] Core coverage ≥ 90%
 - [ ] Simulated Chrome flow
 - [ ] Web release build
 - [ ] Production container build and desktop/mobile smoke checks
@@ -36,6 +36,7 @@ Duplicate this document for each version and keep the results with release notes
 - [ ] Documentation is written in English and uses canonical, working links
 - [ ] Network domains, permissions, storage, and unsupported features match the code
 - [ ] IGN attribution and unofficial-project disclaimer are visible
+- [ ] Restricted-asset history rewrite completed according to `docs/HISTORY_REWRITE.md`
 
 ## Web
 
@@ -52,7 +53,9 @@ Duplicate this document for each version and keep the results with release notes
 - [ ] Responsive mobile, tablet, and desktop
 - [ ] GitHub Pages CSP meta allows only required image and connection hosts
 - [ ] Container headers allow only required hosts and geolocation for `self`
-- [ ] `flutter_tts` still builds on iOS, or its Swift Package Manager warning has an accepted release note
+- [ ] First-party speech adapters build on Web, Android, and iOS
+- [ ] iOS build uses Swift Package Manager without a CocoaPods fallback warning
+- [ ] WebAssembly build completes without compatibility warnings
 - [ ] Legal notice contains no release marker
 
 ## Real Android

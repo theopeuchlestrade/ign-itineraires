@@ -12,13 +12,17 @@ abstract interface class DeviceLocationGateway {
   Future<NavigationPosition> currentPosition({TravelMode? navigationMode});
 
   Stream<NavigationPosition> watchPositions(TravelMode mode);
+
+  Future<bool> openLocationSettings();
+
+  Future<bool> openAppSettings();
 }
 
 class DeviceLocationException implements Exception {
-  const DeviceLocationException(this.message, {this.permanentlyDenied = false});
+  const DeviceLocationException(this.message, {this.recovery});
 
   final String message;
-  final bool permanentlyDenied;
+  final LocationRecovery? recovery;
 
   @override
   String toString() => message;
@@ -90,6 +94,12 @@ class DeviceLocationService implements DeviceLocationGateway {
     });
   }
 
+  @override
+  Future<bool> openLocationSettings() => Geolocator.openLocationSettings();
+
+  @override
+  Future<bool> openAppSettings() => Geolocator.openAppSettings();
+
   LocationSettings _settings(TravelMode? mode, {Duration? timeLimit}) {
     final navigation = mode != null;
     final accuracy = navigation
@@ -140,6 +150,7 @@ class DeviceLocationService implements DeviceLocationGateway {
     if (!await Geolocator.isLocationServiceEnabled()) {
       throw const DeviceLocationException(
         'Activez la localisation de votre appareil pour utiliser votre position.',
+        recovery: LocationRecovery.openLocationSettings,
       );
     }
 
@@ -155,7 +166,7 @@ class DeviceLocationService implements DeviceLocationGateway {
     if (permission == LocationPermission.deniedForever) {
       throw const DeviceLocationException(
         'La localisation est bloquée. Autorisez-la dans les réglages de l’application.',
-        permanentlyDenied: true,
+        recovery: LocationRecovery.openAppSettings,
       );
     }
   }
