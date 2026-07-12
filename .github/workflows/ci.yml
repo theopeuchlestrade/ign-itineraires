@@ -203,7 +203,7 @@ jobs:
             fi
             sleep 1
           done
-          npm run smoke:web
+          REQUIRE_SECURITY_HEADERS=true npm run smoke:web
 
   deploy-pages:
     name: Deploy GitHub Pages

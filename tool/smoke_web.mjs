@@ -3,6 +3,7 @@ import { PNG } from 'pngjs';
 
 const url = process.env.SMOKE_URL ?? 'http://127.0.0.1:8080';
 const appUrl = new URL(url.endsWith('/') ? url : `${url}/`);
+const requireSecurityHeaders = process.env.REQUIRE_SECURITY_HEADERS === 'true';
 const expectedTitle = 'IGN Itinéraires';
 const failures = [];
 
@@ -63,10 +64,20 @@ try {
     if ((await page.title()) !== expectedTitle) throw new Error(`${candidate.name} title is invalid`);
 
     const headers = response.headers();
-    if (!headers['content-security-policy']?.includes('https://data.geopf.fr')) {
+    const responseCsp = headers['content-security-policy'];
+    const metaCsp = await page
+      .locator('meta[http-equiv="Content-Security-Policy"]')
+      .getAttribute('content');
+    if (requireSecurityHeaders && !responseCsp) {
+      throw new Error('CSP response header is missing');
+    }
+    if (!(responseCsp ?? metaCsp)?.includes('https://data.geopf.fr')) {
       throw new Error('CSP does not allow data.geopf.fr');
     }
-    if (!headers['permissions-policy']?.includes('geolocation=(self)')) {
+    if (
+      requireSecurityHeaders &&
+      !headers['permissions-policy']?.includes('geolocation=(self)')
+    ) {
       throw new Error('Permissions-Policy does not allow same-origin geolocation');
     }
 
@@ -90,7 +101,7 @@ try {
 
   const legalPage = await browser.newPage();
   collectFailures(legalPage);
-  const legalResponse = await legalPage.goto(new URL('legal.html', appUrl), {
+  const legalResponse = await legalPage.goto(new URL('legal.html', appUrl).href, {
     waitUntil: 'domcontentloaded',
   });
   if (!legalResponse?.ok()) throw new Error(`legal notice returned ${legalResponse?.status()}`);
