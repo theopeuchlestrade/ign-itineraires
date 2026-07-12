@@ -16,7 +16,8 @@ foreground GPS guidance. The same codebase targets web, Android, and iOS.
 - Speech, wake-lock, geolocation, external navigation, and remote API behavior
   are exposed through gateways so deterministic tests can replace them. Speech
   uses Web SpeechSynthesis in browsers, Android `TextToSpeech`, and iOS
-  `AVSpeechSynthesizer`, without a third-party speech plugin.
+  `AVSpeechSynthesizer`, without a third-party speech plugin. iOS plugins are
+  integrated exclusively through Swift Package Manager.
 - There is no IGN Itinéraires backend, account, analytics SDK, advertising tracker,
   or cloud synchronization.
 

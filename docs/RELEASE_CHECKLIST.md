@@ -54,6 +54,7 @@ Duplicate this document for each version and keep the results with release notes
 - [ ] GitHub Pages CSP meta allows only required image and connection hosts
 - [ ] Container headers allow only required hosts and geolocation for `self`
 - [ ] First-party speech adapters build on Web, Android, and iOS
+- [ ] iOS build uses Swift Package Manager without a CocoaPods fallback warning
 - [ ] WebAssembly build completes without compatibility warnings
 - [ ] Legal notice contains no release marker
 

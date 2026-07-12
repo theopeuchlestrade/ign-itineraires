@@ -34,6 +34,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - Replaced the restricted Marianne typeface and State design-system references
   with the project's own Manrope-based Material 3 identity.
+- Migrated iOS plugin integration from CocoaPods to Swift Package Manager and
+  replaced the third-party speech plugin with first-party platform adapters.
 
 ### Security
 
