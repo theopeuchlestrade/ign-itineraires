@@ -23,6 +23,15 @@ abstract interface class LocalRouteStore {
   Future<void> saveVoiceEnabled(bool enabled);
 }
 
+class LocalStoreException implements Exception {
+  const LocalStoreException(this.message);
+
+  final String message;
+
+  @override
+  String toString() => message;
+}
+
 class SharedPreferencesRouteStore implements LocalRouteStore {
   static const _favoritesKey = 'favorite_places_v1';
   static const _recentsKey = 'recent_routes_v1';
@@ -41,9 +50,11 @@ class SharedPreferencesRouteStore implements LocalRouteStore {
   @override
   Future<void> saveFavorites(List<Place> favorites) async {
     final preferences = await SharedPreferences.getInstance();
-    await preferences.setStringList(
-      _favoritesKey,
-      favorites.map((place) => jsonEncode(place.toJson())).toList(),
+    _requireSaved(
+      await preferences.setStringList(
+        _favoritesKey,
+        favorites.map((place) => jsonEncode(place.toJson())).toList(),
+      ),
     );
   }
 
@@ -59,9 +70,11 @@ class SharedPreferencesRouteStore implements LocalRouteStore {
   @override
   Future<void> saveRecents(List<RecentRoute> recents) async {
     final preferences = await SharedPreferences.getInstance();
-    await preferences.setStringList(
-      _recentsKey,
-      recents.map((route) => route.encode()).toList(),
+    _requireSaved(
+      await preferences.setStringList(
+        _recentsKey,
+        recents.map((route) => route.encode()).toList(),
+      ),
     );
   }
 
@@ -74,13 +87,13 @@ class SharedPreferencesRouteStore implements LocalRouteStore {
   @override
   Future<void> saveHistoryEnabled(bool enabled) async {
     final preferences = await SharedPreferences.getInstance();
-    await preferences.setBool(_historyEnabledKey, enabled);
+    _requireSaved(await preferences.setBool(_historyEnabledKey, enabled));
   }
 
   @override
   Future<void> clearRecents() async {
     final preferences = await SharedPreferences.getInstance();
-    await preferences.remove(_recentsKey);
+    _requireSaved(await preferences.remove(_recentsKey));
   }
 
   @override
@@ -92,7 +105,7 @@ class SharedPreferencesRouteStore implements LocalRouteStore {
   @override
   Future<void> saveVoiceEnabled(bool enabled) async {
     final preferences = await SharedPreferences.getInstance();
-    await preferences.setBool(_voiceEnabledKey, enabled);
+    _requireSaved(await preferences.setBool(_voiceEnabledKey, enabled));
   }
 
   Iterable<T> _decodeItems<T>(
@@ -111,6 +124,14 @@ class SharedPreferencesRouteStore implements LocalRouteStore {
       } on ArgumentError {
         // Ignore obsolete or corrupted local entries.
       }
+    }
+  }
+
+  void _requireSaved(bool saved) {
+    if (!saved) {
+      throw const LocalStoreException(
+        'Les données locales n’ont pas pu être enregistrées.',
+      );
     }
   }
 }

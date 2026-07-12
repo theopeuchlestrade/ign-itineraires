@@ -46,7 +46,7 @@ dart run tool/check_coverage.dart
 ruby scripts/check_markdown_links.rb
 ```
 
-Core route, controller, and API parsing coverage must remain at or above 80%.
+Core route, controller, and API parsing coverage must remain at or above 90%.
 
 ### Live Service Tests
 
@@ -77,7 +77,9 @@ Platform builds and deterministic integration journeys are documented in [`docs/
 For a complete list of build commands, see [`docs/TEST_PLAN.md`](docs/TEST_PLAN.md).
 
 ```sh
-flutter build web --release
+sh scripts/build_web_release.sh /
+ruby scripts/check_web_release.rb build/web /
+flutter build web --wasm --release --no-web-resources-cdn
 flutter build apk --debug
 flutter build ios --simulator --no-codesign
 docker build -t ign-itineraires:local .

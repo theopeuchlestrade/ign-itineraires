@@ -14,6 +14,8 @@ enum NavigationStatus {
 
 enum LocationPrecision { precise, reduced, unknown }
 
+enum LocationRecovery { openLocationSettings, openAppSettings }
+
 enum NavigationSignalState {
   acquiring,
   reliable,
@@ -102,6 +104,7 @@ class NavigationSession {
     this.signalState = NavigationSignalState.acquiring,
     this.displayHeadingDegrees = 0,
     this.message,
+    this.locationRecovery,
   });
 
   final NavigationStatus status;
@@ -121,6 +124,7 @@ class NavigationSession {
   final NavigationSignalState signalState;
   final double displayHeadingDegrees;
   final String? message;
+  final LocationRecovery? locationRecovery;
 
   RouteStep? get upcomingStep {
     final steps = route?.steps;
@@ -158,6 +162,7 @@ class NavigationSession {
     NavigationSignalState? signalState,
     double? displayHeadingDegrees,
     Object? message = _unchanged,
+    Object? locationRecovery = _unchanged,
   }) {
     return NavigationSession(
       status: status ?? this.status,
@@ -184,6 +189,9 @@ class NavigationSession {
       message: identical(message, _unchanged)
           ? this.message
           : message as String?,
+      locationRecovery: identical(locationRecovery, _unchanged)
+          ? this.locationRecovery
+          : locationRecovery as LocationRecovery?,
     );
   }
 

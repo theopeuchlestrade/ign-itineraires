@@ -68,6 +68,9 @@ class FakeDeviceLocation implements DeviceLocationGateway {
   DeviceLocationException? error;
   int currentPositionCalls = 0;
   int watchCalls = 0;
+  int openLocationSettingsCalls = 0;
+  int openAppSettingsCalls = 0;
+  bool settingsOpenResult = true;
 
   void emit(NavigationPosition position) {
     current = position;
@@ -99,6 +102,18 @@ class FakeDeviceLocation implements DeviceLocationGateway {
     watchCalls++;
     return _positions.stream;
   }
+
+  @override
+  Future<bool> openLocationSettings() async {
+    openLocationSettingsCalls++;
+    return settingsOpenResult;
+  }
+
+  @override
+  Future<bool> openAppSettings() async {
+    openAppSettingsCalls++;
+    return settingsOpenResult;
+  }
 }
 
 class MemoryRouteStore implements LocalRouteStore {
@@ -106,9 +121,17 @@ class MemoryRouteStore implements LocalRouteStore {
   List<RecentRoute> recents = [];
   bool historyEnabled = false;
   bool voiceEnabled = true;
+  Object? clearRecentsError;
+  Object? saveFavoritesError;
+  Object? saveHistoryError;
+  Object? saveRecentsError;
+  Object? saveVoiceError;
 
   @override
-  Future<void> clearRecents() async => recents = [];
+  Future<void> clearRecents() async {
+    if (clearRecentsError case final error?) throw error;
+    recents = [];
+  }
 
   @override
   Future<List<Place>> loadFavorites() async => List.of(favorites);
@@ -124,21 +147,25 @@ class MemoryRouteStore implements LocalRouteStore {
 
   @override
   Future<void> saveFavorites(List<Place> value) async {
+    if (saveFavoritesError case final error?) throw error;
     favorites = List.of(value);
   }
 
   @override
   Future<void> saveHistoryEnabled(bool enabled) async {
+    if (saveHistoryError case final error?) throw error;
     historyEnabled = enabled;
   }
 
   @override
   Future<void> saveRecents(List<RecentRoute> value) async {
+    if (saveRecentsError case final error?) throw error;
     recents = List.of(value);
   }
 
   @override
   Future<void> saveVoiceEnabled(bool enabled) async {
+    if (saveVoiceError case final error?) throw error;
     voiceEnabled = enabled;
   }
 }
@@ -171,11 +198,13 @@ class FakeWakeLock implements WakeLockGateway {
   bool enabled = false;
   int enableCalls = 0;
   int disableCalls = 0;
+  Object? disableError;
 
   @override
   Future<void> disable() async {
     disableCalls++;
     enabled = false;
+    if (disableError case final error?) throw error;
   }
 
   @override

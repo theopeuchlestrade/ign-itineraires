@@ -33,6 +33,7 @@ class _AddressSearchFieldState extends State<AddressSearchField> {
   Timer? _debounce;
   List<Place> _suggestions = const [];
   bool _loading = false;
+  String? _statusMessage;
   bool _programmaticChange = false;
   int _searchGeneration = 0;
 
@@ -48,6 +49,8 @@ class _AddressSearchFieldState extends State<AddressSearchField> {
     super.didUpdateWidget(oldWidget);
     if (widget.value != oldWidget.value &&
         _controller.text != (widget.value?.label ?? '')) {
+      _debounce?.cancel();
+      _searchGeneration++;
       _programmaticChange = true;
       _controller.text = widget.value?.label ?? '';
       _controller.selection = TextSelection.collapsed(
@@ -55,6 +58,8 @@ class _AddressSearchFieldState extends State<AddressSearchField> {
       );
       _programmaticChange = false;
       _suggestions = const [];
+      _loading = false;
+      _statusMessage = null;
     }
   }
 
@@ -72,7 +77,10 @@ class _AddressSearchFieldState extends State<AddressSearchField> {
     if (!_focusNode.hasFocus && mounted) {
       Future<void>.delayed(const Duration(milliseconds: 180), () {
         if (mounted && !_focusNode.hasFocus) {
-          setState(() => _suggestions = const []);
+          setState(() {
+            _suggestions = const [];
+            _statusMessage = null;
+          });
         }
       });
     }
@@ -89,19 +97,29 @@ class _AddressSearchFieldState extends State<AddressSearchField> {
       setState(() {
         _loading = false;
         _suggestions = const [];
+        _statusMessage = null;
       });
       return;
     }
     _debounce = Timer(const Duration(milliseconds: 350), () async {
       if (!mounted) return;
-      setState(() => _loading = true);
+      setState(() {
+        _loading = true;
+        _statusMessage = null;
+      });
       try {
         final results = await widget.search(value);
         if (!mounted || generation != _searchGeneration) return;
-        setState(() => _suggestions = results);
+        setState(() {
+          _suggestions = results;
+          _statusMessage = results.isEmpty ? 'Aucun résultat.' : null;
+        });
       } catch (_) {
         if (!mounted || generation != _searchGeneration) return;
-        setState(() => _suggestions = const []);
+        setState(() {
+          _suggestions = const [];
+          _statusMessage = 'Recherche indisponible. Réessayez.';
+        });
       } finally {
         if (mounted && generation == _searchGeneration) {
           setState(() => _loading = false);
@@ -111,13 +129,19 @@ class _AddressSearchFieldState extends State<AddressSearchField> {
   }
 
   void _select(Place place) {
+    _debounce?.cancel();
+    _searchGeneration++;
     _programmaticChange = true;
     _controller.text = place.label;
     _controller.selection = TextSelection.collapsed(
       offset: _controller.text.length,
     );
     _programmaticChange = false;
-    setState(() => _suggestions = const []);
+    setState(() {
+      _suggestions = const [];
+      _loading = false;
+      _statusMessage = null;
+    });
     widget.onChanged(place);
     _focusNode.unfocus();
   }
@@ -164,28 +188,46 @@ class _AddressSearchFieldState extends State<AddressSearchField> {
           ),
         ),
         if (_suggestions.isNotEmpty)
-          Material(
-            elevation: 3,
-            borderRadius: const BorderRadius.vertical(
-              bottom: Radius.circular(12),
+          Semantics(
+            liveRegion: true,
+            label: '${_suggestions.length} suggestions disponibles',
+            child: Material(
+              elevation: 3,
+              borderRadius: const BorderRadius.vertical(
+                bottom: Radius.circular(12),
+              ),
+              clipBehavior: Clip.antiAlias,
+              child: ConstrainedBox(
+                constraints: const BoxConstraints(maxHeight: 230),
+                child: ListView.separated(
+                  shrinkWrap: true,
+                  padding: EdgeInsets.zero,
+                  itemCount: _suggestions.length,
+                  separatorBuilder: (_, _) => const Divider(height: 1),
+                  itemBuilder: (context, index) {
+                    final place = _suggestions[index];
+                    return ListTile(
+                      dense: true,
+                      leading: const Icon(Icons.place_outlined),
+                      title: Text(place.label),
+                      onTap: () => _select(place),
+                    );
+                  },
+                ),
+              ),
             ),
-            clipBehavior: Clip.antiAlias,
-            child: ConstrainedBox(
-              constraints: const BoxConstraints(maxHeight: 230),
-              child: ListView.separated(
-                shrinkWrap: true,
-                padding: EdgeInsets.zero,
-                itemCount: _suggestions.length,
-                separatorBuilder: (_, _) => const Divider(height: 1),
-                itemBuilder: (context, index) {
-                  final place = _suggestions[index];
-                  return ListTile(
-                    dense: true,
-                    leading: const Icon(Icons.place_outlined),
-                    title: Text(place.label),
-                    onTap: () => _select(place),
-                  );
-                },
+          )
+        else if (_statusMessage != null)
+          Semantics(
+            liveRegion: true,
+            child: Padding(
+              padding: const EdgeInsets.fromLTRB(12, 8, 12, 0),
+              child: Align(
+                alignment: Alignment.centerLeft,
+                child: Text(
+                  _statusMessage!,
+                  style: Theme.of(context).textTheme.bodySmall,
+                ),
               ),
             ),
           ),

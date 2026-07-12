@@ -2,6 +2,7 @@ import 'package:flutter/foundation.dart';
 import 'package:ign_itineraires/src/features/routing/data/device_location_service.dart';
 import 'package:ign_itineraires/src/features/routing/data/geoplateforme_api.dart';
 import 'package:ign_itineraires/src/features/routing/data/local_route_store.dart';
+import 'package:ign_itineraires/src/features/routing/domain/navigation_models.dart';
 import 'package:ign_itineraires/src/features/routing/domain/routing_models.dart';
 
 class RoutingController extends ChangeNotifier {
@@ -22,8 +23,10 @@ class RoutingController extends ChangeNotifier {
   bool calculating = false;
   String? message;
   bool messageIsError = false;
+  LocationRecovery? locationRecovery;
   int _locationGeneration = 0;
   int _calculationGeneration = 0;
+  bool _disposed = false;
 
   bool get canCalculate => start != null && destination != null && !calculating;
 
@@ -48,8 +51,7 @@ class RoutingController extends ChangeNotifier {
       recents = const [];
       historyEnabled = false;
     }
-    notifyListeners();
-    await useCurrentLocation(silent: true);
+    _notify();
   }
 
   Future<List<Place>> search(String query) {
@@ -63,7 +65,7 @@ class RoutingController extends ChangeNotifier {
     start = place;
     route = null;
     clearMessage();
-    notifyListeners();
+    _notify();
   }
 
   void setDestination(Place? place) {
@@ -72,7 +74,7 @@ class RoutingController extends ChangeNotifier {
     destination = place;
     route = null;
     clearMessage();
-    notifyListeners();
+    _notify();
   }
 
   void setMode(TravelMode value) {
@@ -82,14 +84,14 @@ class RoutingController extends ChangeNotifier {
     calculating = false;
     route = null;
     clearMessage();
-    notifyListeners();
+    _notify();
   }
 
   Future<void> useCurrentLocation({bool silent = false}) async {
     final generation = ++_locationGeneration;
     locating = true;
     if (!silent) clearMessage();
-    notifyListeners();
+    _notify();
     try {
       final current = await _location.currentPlace();
       if (generation != _locationGeneration) return;
@@ -100,13 +102,35 @@ class RoutingController extends ChangeNotifier {
       }
     } on DeviceLocationException catch (error) {
       if (generation != _locationGeneration) return;
-      if (!silent) _showError(error.message);
+      if (!silent) {
+        locationRecovery = error.recovery;
+        _showError(error.message);
+      }
     } finally {
       if (generation == _locationGeneration) {
         locating = false;
-        notifyListeners();
+        _notify();
       }
     }
+  }
+
+  Future<void> recoverLocation() async {
+    final recovery = locationRecovery;
+    if (recovery == null) return;
+    final opened = switch (recovery) {
+      LocationRecovery.openLocationSettings =>
+        await _location.openLocationSettings(),
+      LocationRecovery.openAppSettings => await _location.openAppSettings(),
+    };
+    if (opened) {
+      locationRecovery = null;
+      _showMessage(
+        'Revenez dans l’application après avoir modifié les réglages.',
+      );
+    } else {
+      _showError('Impossible d’ouvrir les réglages de localisation.');
+    }
+    _notify();
   }
 
   Future<void> calculate() async {
@@ -115,14 +139,14 @@ class RoutingController extends ChangeNotifier {
     final selectedDestination = destination;
     if (selectedStart == null || selectedDestination == null) {
       _showError('Choisissez un départ et une arrivée.');
-      notifyListeners();
+      _notify();
       return;
     }
 
     calculating = true;
     route = null;
     clearMessage();
-    notifyListeners();
+    _notify();
     try {
       final result = await _api.calculateRoute(
         start: selectedStart,
@@ -140,7 +164,7 @@ class RoutingController extends ChangeNotifier {
           durationSeconds: result.durationSeconds,
           createdAt: DateTime.now(),
         );
-        recents = [
+        final updatedRecents = [
           recent,
           ...recents.where(
             (item) =>
@@ -149,7 +173,14 @@ class RoutingController extends ChangeNotifier {
                 item.mode != mode,
           ),
         ].take(10).toList(growable: false);
-        await _store.saveRecents(recents);
+        try {
+          await _store.saveRecents(updatedRecents);
+          recents = updatedRecents;
+        } catch (_) {
+          _showMessage(
+            'Itinéraire calculé, mais l’historique n’a pas pu être enregistré.',
+          );
+        }
       }
     } on GeoplateformeException catch (error) {
       if (generation != _calculationGeneration) return;
@@ -160,7 +191,7 @@ class RoutingController extends ChangeNotifier {
     } finally {
       if (generation == _calculationGeneration) {
         calculating = false;
-        notifyListeners();
+        _notify();
       }
     }
   }
@@ -168,15 +199,22 @@ class RoutingController extends ChangeNotifier {
   Future<void> toggleDestinationFavorite() async {
     final place = destination;
     if (place == null) return;
-    if (favorites.contains(place)) {
-      favorites = favorites.where((item) => item != place).toList();
+    final previous = favorites;
+    if (previous.contains(place)) {
+      favorites = previous.where((item) => item != place).toList();
       _showMessage('Favori supprimé.');
     } else {
-      favorites = [place, ...favorites].take(20).toList(growable: false);
+      favorites = [place, ...previous].take(20).toList(growable: false);
       _showMessage('Destination ajoutée aux favoris.');
     }
-    notifyListeners();
-    await _store.saveFavorites(favorites);
+    _notify();
+    try {
+      await _store.saveFavorites(favorites);
+    } catch (_) {
+      favorites = previous;
+      _showError('Le favori n’a pas pu être enregistré.');
+      _notify();
+    }
   }
 
   void restoreRecent(RecentRoute recent) {
@@ -189,29 +227,39 @@ class RoutingController extends ChangeNotifier {
     mode = recent.mode;
     route = null;
     clearMessage();
-    notifyListeners();
+    _notify();
   }
 
   Future<void> setHistoryEnabled(bool enabled) async {
     if (historyEnabled == enabled) return;
-    historyEnabled = enabled;
-    if (!enabled) {
-      recents = const [];
-      await _store.clearRecents();
+    try {
+      if (!enabled) await _store.clearRecents();
+      await _store.saveHistoryEnabled(enabled);
+    } catch (_) {
+      _showError('La préférence d’historique n’a pas pu être enregistrée.');
+      _notify();
+      return;
     }
-    notifyListeners();
-    await _store.saveHistoryEnabled(enabled);
+    historyEnabled = enabled;
+    if (!enabled) recents = const [];
+    _notify();
   }
 
   Future<void> clearRecents() async {
-    recents = const [];
-    notifyListeners();
-    await _store.clearRecents();
+    try {
+      await _store.clearRecents();
+      recents = const [];
+      _notify();
+    } catch (_) {
+      _showError('L’historique n’a pas pu être effacé.');
+      _notify();
+    }
   }
 
   void clearMessage() {
     message = null;
     messageIsError = false;
+    locationRecovery = null;
   }
 
   void _showError(String value) {
@@ -222,5 +270,17 @@ class RoutingController extends ChangeNotifier {
   void _showMessage(String value) {
     message = value;
     messageIsError = false;
+  }
+
+  void _notify() {
+    if (!_disposed) notifyListeners();
+  }
+
+  @override
+  void dispose() {
+    _disposed = true;
+    _locationGeneration++;
+    _calculationGeneration++;
+    super.dispose();
   }
 }

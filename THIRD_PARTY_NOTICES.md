@@ -5,7 +5,7 @@ services, data, fonts, and marks used by IGN Itinéraires.
 
 ## Packages and Tooling
 
-Flutter, Dart, `flutter_map`, Geolocator, flutter_tts, shared_preferences,
+Flutter, Dart, `flutter_map`, Geolocator, shared_preferences,
 url_launcher, wakelock_plus, and other dependencies are licensed by their
 respective authors. See `pubspec.lock` and upstream package metadata for exact
 versions and licence information.

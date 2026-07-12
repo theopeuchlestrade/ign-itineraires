@@ -6,10 +6,10 @@ must never be committed, uploaded as artifacts, or copied into defect reports.
 
 ## Current Baseline
 
-The validation completed on 3 July 2026 produced:
+The validation completed on 11 July 2026 produced:
 
-- 86 passing unit and widget tests, plus the golden suite
-- 92.2% coverage for routing domain logic, controllers, and API parsing
+- 100 passing unit and widget tests, plus nine passing golden and keyboard cases
+- 91.9% coverage for routing domain logic, controllers, and API parsing
 - Four passing deterministic Chrome journeys
 - Four passing live Geoplatform contracts
 - Successful web release, Android debug, and iOS Simulator builds
@@ -24,7 +24,7 @@ The CI must pass before merging:
 
 - Dart format and static analysis;
 - Unit, widget, and golden tests, excluding `live` tests;
-- Minimum 80% coverage on domain, IGN parsing, and controllers;
+- Minimum 90% coverage on domain, IGN parsing, and controllers;
 - Deterministic planning, persistence, failure, and guidance-start flows in Chrome;
 - Web release build, production container smoke test, Android debug APK, and
   unsigned iOS Simulator build;
@@ -38,7 +38,10 @@ dart format --output=none --set-exit-if-changed lib test integration_test test_d
 flutter analyze
 flutter test --coverage --exclude-tags "live || golden"
 dart run tool/check_coverage.dart
-flutter build web --release
+sh scripts/build_web_release.sh /ign-itineraires/
+ruby scripts/check_web_release.rb build/web /ign-itineraires/
+flutter build web --wasm --release --no-web-resources-cdn \
+  --base-href /ign-itineraires/ --output build/web-wasm
 flutter build apk --debug
 flutter build ios --simulator --no-codesign
 ```

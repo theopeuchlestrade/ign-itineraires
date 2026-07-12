@@ -14,7 +14,10 @@ foreground GPS guidance. The same codebase targets web, Android, and iOS.
 - Favorites, recent routes, and the speech preference are stored locally with
   shared preferences.
 - Speech, wake-lock, geolocation, external navigation, and remote API behavior
-  are exposed through gateways so deterministic tests can replace them.
+  are exposed through gateways so deterministic tests can replace them. Speech
+  uses Web SpeechSynthesis in browsers, Android `TextToSpeech`, and iOS
+  `AVSpeechSynthesizer`, without a third-party speech plugin. iOS plugins are
+  integrated exclusively through Swift Package Manager.
 - There is no IGN Itinéraires backend, account, analytics SDK, advertising tracker,
   or cloud synchronization.
 
@@ -35,12 +38,15 @@ Controllers coordinate gateways and expose state to the presentation layer.
 
 ## Data Flow
 
-1. Address text is sent to Géoplateforme autocomplete.
-2. Selected coordinates are sent to route calculation through `POST`.
-3. The returned geometry and instructions are held in memory and rendered.
-4. During guidance, foreground GPS fixes are processed locally.
-5. A new position is sent only when guidance starts or a route is recalculated.
-6. Favorites and opt-in history remain on the device.
+1. Local preferences are loaded without requesting location permission.
+2. After an explicit tap on “Use my position”, foreground location permission
+   is requested and the resulting position stays in memory.
+3. Address text is sent to Géoplateforme autocomplete.
+4. Selected coordinates are sent to route calculation through `POST`.
+5. The returned geometry and instructions are held in memory and rendered.
+6. During guidance, foreground GPS fixes are processed locally.
+7. A new position is sent only when guidance starts or a route is recalculated.
+8. Favorites and opt-in history remain on the device.
 
 See [`../PRIVACY.md`](../PRIVACY.md) for the complete data, permission, and
 retention policy.

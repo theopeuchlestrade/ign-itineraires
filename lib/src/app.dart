@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:ign_itineraires/src/app_dependencies.dart';
 import 'package:ign_itineraires/src/features/routing/presentation/routing_page.dart';
-import 'package:ign_itineraires/src/theme/company_theme.dart';
+import 'package:ign_itineraires/src/theme/app_theme.dart';
 
 class IgnItinerairesApp extends StatefulWidget {
   IgnItinerairesApp({super.key, AppDependencies? dependencies})
@@ -28,8 +28,8 @@ class _IgnItinerairesAppState extends State<IgnItinerairesApp> {
       title: 'IGN Itinéraires',
       debugShowCheckedModeBanner: false,
       themeMode: ThemeMode.system,
-      theme: buildCompanyTheme(Brightness.light),
-      darkTheme: buildCompanyTheme(Brightness.dark),
+      theme: buildAppTheme(Brightness.light),
+      darkTheme: buildAppTheme(Brightness.dark),
       home: RoutingPage(dependencies: widget.dependencies),
     );
   }
