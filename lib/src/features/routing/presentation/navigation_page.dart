@@ -212,7 +212,7 @@ class _NavigationPageState extends State<NavigationPage>
                   MediaQuery.textScalerOf(context).scale(1) >= 1.5;
               return Column(
                 children: [
-                  Flexible(
+                  Expanded(
                     child: SingleChildScrollView(
                       child: Column(
                         children: [
