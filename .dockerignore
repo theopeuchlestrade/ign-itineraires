@@ -15,4 +15,4 @@ test_driver
 
 *.log
 .DS_Store
-**/.!*!
+**/.!*!*
