@@ -72,6 +72,7 @@ class NavigationController extends ChangeNotifier {
       session.copyWith(
         status: NavigationStatus.acquiringPosition,
         voiceEnabled: voiceEnabled,
+        speechRetryAvailable: false,
         signalState: NavigationSignalState.acquiring,
         message: null,
       ),
@@ -164,7 +165,9 @@ class NavigationController extends ChangeNotifier {
         ),
       );
     }
-    if (announceInitial && session.voiceEnabled) {
+    if (announceInitial &&
+        session.voiceEnabled &&
+        !session.speechRetryAvailable) {
       final instruction = _announcementPlanner.initial(route);
       if (instruction != null) await _speak(instruction);
     }
@@ -270,7 +273,7 @@ class NavigationController extends ChangeNotifier {
       await _arrive(operation);
       return;
     }
-    if (session.voiceEnabled) {
+    if (session.voiceEnabled && !session.speechRetryAvailable) {
       final announcement = _announcementPlanner.next(
         update: update,
         route: route,
@@ -316,7 +319,9 @@ class NavigationController extends ChangeNotifier {
         operation: operation,
       );
       if (!_canContinue(operation)) return;
-      if (session.voiceEnabled) await _speak('Itinéraire recalculé.');
+      if (session.voiceEnabled && !session.speechRetryAvailable) {
+        await _speak('Itinéraire recalculé.');
+      }
     } on GeoplateformeException catch (error) {
       _deviationPolicy.clearOffRouteFixes();
       _setSession(
@@ -395,7 +400,18 @@ class NavigationController extends ChangeNotifier {
 
   Future<void> toggleVoice() async {
     final enabled = !session.voiceEnabled;
-    _setSession(session.copyWith(voiceEnabled: enabled));
+    _setSession(
+      session.copyWith(voiceEnabled: enabled, speechRetryAvailable: false),
+    );
+    if (enabled) {
+      await _repeatCurrentInstruction();
+    } else {
+      try {
+        await _speech.stop();
+      } catch (_) {
+        // Muting remains effective for subsequent announcements.
+      }
+    }
     try {
       await _store.saveVoiceEnabled(enabled);
     } catch (_) {
@@ -406,16 +422,12 @@ class NavigationController extends ChangeNotifier {
         ),
       );
     }
-    if (!enabled) {
-      try {
-        await _speech.stop();
-      } catch (_) {
-        // Muting remains effective for subsequent announcements.
-      }
-      return;
-    }
-    final instruction = session.upcomingStep?.instruction;
-    if (instruction != null) await _speak(instruction);
+  }
+
+  Future<void> retrySpeech() async {
+    if (!session.voiceEnabled) return;
+    _setSession(session.copyWith(speechRetryAvailable: false));
+    await _repeatCurrentInstruction();
   }
 
   void setFollowingUser(bool following) {
@@ -443,7 +455,9 @@ class NavigationController extends ChangeNotifier {
         message: null,
       ),
     );
-    if (session.voiceEnabled) await _speak('Vous êtes arrivé à destination.');
+    if (session.voiceEnabled && !session.speechRetryAvailable) {
+      await _speak('Vous êtes arrivé à destination.');
+    }
   }
 
   double _displayHeading(NavigationPosition position, GuidanceUpdate update) {
@@ -507,12 +521,21 @@ class NavigationController extends ChangeNotifier {
     try {
       await _speech.speak(text);
     } catch (_) {
-      _setSession(
-        session.copyWith(
-          message: 'La voix n’est pas disponible ; le guidage visuel continue.',
-        ),
-      );
+      _setSession(session.copyWith(speechRetryAvailable: true));
     }
+  }
+
+  Future<void> _repeatCurrentInstruction() async {
+    final route = session.route;
+    if (route == null) return;
+    final instruction = _announcementPlanner.replayCurrent(
+      stepIndex: session.upcomingStepIndex,
+      distanceToManeuverMeters: session.distanceToManeuverMeters,
+      remainingDistanceMeters: session.remainingDistanceMeters,
+      route: route,
+      mode: mode,
+    );
+    if (instruction != null) await _speak(instruction);
   }
 
   void _handleSpeechError(String message) {
@@ -522,12 +545,7 @@ class NavigationController extends ChangeNotifier {
         normalized.contains('cancelled')) {
       return;
     }
-    _setSession(
-      session.copyWith(
-        voiceEnabled: false,
-        message: 'La voix n’est pas disponible ; le guidage visuel continue.',
-      ),
-    );
+    _setSession(session.copyWith(speechRetryAvailable: true));
   }
 
   Future<void> _stopForegroundTracking() async {

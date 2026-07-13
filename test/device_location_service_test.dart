@@ -140,6 +140,12 @@ void main() {
       ),
     );
   });
+
+  test('treats browser heading accuracy as unavailable', () {
+    expect(normalizedHeadingAccuracy(0, isWeb: true), 999);
+    expect(normalizedHeadingAccuracy(3, isWeb: false), 3);
+    expect(normalizedHeadingAccuracy(double.nan, isWeb: false), 999);
+  });
 }
 
 class _FakeGeolocator extends GeolocatorPlatform {

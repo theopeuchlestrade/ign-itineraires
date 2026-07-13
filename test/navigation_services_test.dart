@@ -14,7 +14,7 @@ void main() {
       await service.speak('Deuxième instruction');
 
       expect(driver.initializeCalls, 1);
-      expect(driver.stopCalls, 2);
+      expect(driver.stopCalls, 0);
       expect(driver.messages, ['Première instruction', 'Deuxième instruction']);
     },
   );

@@ -50,9 +50,7 @@ class NavigationEngine {
     var upcomingStep = 0;
     var distanceToManeuver = remaining;
     if (_route.steps.isNotEmpty) {
-      currentStep = _track.stepEndDistances.indexWhere(
-        (end) => progress < end - 3,
-      );
+      currentStep = _track.stepEndDistances.indexWhere((end) => progress < end);
       if (currentStep == -1) currentStep = _route.steps.length - 1;
       upcomingStep = math.min(currentStep + 1, _route.steps.length - 1);
       distanceToManeuver = currentStep < _track.stepEndDistances.length
@@ -127,9 +125,7 @@ class GuidanceAnnouncementPlanner {
     if (step.type == 'arrive' && update.remainingDistanceMeters > 80) {
       return null;
     }
-    final thresholds = mode == TravelMode.car
-        ? const [300, 60]
-        : const [80, 15];
+    final thresholds = _thresholds(mode);
     final announced = _announcedThresholds.putIfAbsent(
       stepIndex,
       () => <int>{},
@@ -149,11 +145,38 @@ class GuidanceAnnouncementPlanner {
     return null;
   }
 
+  String? replayCurrent({
+    required int stepIndex,
+    required double distanceToManeuverMeters,
+    required double remainingDistanceMeters,
+    required RoutePlan route,
+    required TravelMode mode,
+  }) {
+    if (route.steps.isEmpty) return null;
+    final normalizedIndex = stepIndex.clamp(0, route.steps.length - 1);
+    final step = route.steps[normalizedIndex];
+    if (step.type == 'arrive' && remainingDistanceMeters > 80) {
+      return 'Continuez vers votre destination';
+    }
+    final thresholds = _thresholds(mode);
+    final announced = _announcedThresholds.putIfAbsent(
+      normalizedIndex,
+      () => <int>{},
+    );
+    for (final threshold in thresholds) {
+      if (distanceToManeuverMeters <= threshold) announced.add(threshold);
+    }
+    return step.instruction;
+  }
+
   void reset() {
     _announcedThresholds.clear();
     _initialAnnounced = false;
     _arrivalAnnounced = false;
   }
+
+  List<int> _thresholds(TravelMode mode) =>
+      mode == TravelMode.car ? const [300, 60] : const [80, 15];
 
   String _spokenDistance(double meters) {
     if (meters >= 950) {

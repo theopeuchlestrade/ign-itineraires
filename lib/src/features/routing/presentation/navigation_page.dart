@@ -40,6 +40,27 @@ Widget buildLiveNavigationMapForTest(
   );
 }
 
+@visibleForTesting
+bool shouldUpdateNavigationCamera(
+  NavigationSession previous,
+  NavigationSession current,
+) {
+  return current.followingUser &&
+      current.snappedPosition != null &&
+      (current.snappedPosition != previous.snappedPosition ||
+          current.displayHeadingDegrees != previous.displayHeadingDegrees ||
+          !previous.followingUser);
+}
+
+@visibleForTesting
+double navigationMarkerRotationDegrees({
+  required bool followingUser,
+  required double headingDegrees,
+  required double mapRotationDegrees,
+}) {
+  return followingUser ? 0 : headingDegrees - mapRotationDegrees;
+}
+
 class _NavigationPageState extends State<NavigationPage>
     with WidgetsBindingObserver {
   late final NavigationController _controller;
@@ -198,6 +219,15 @@ class _NavigationPageState extends State<NavigationPage>
                           if (session.message != null) ...[
                             const SizedBox(height: 8),
                             _NavigationMessage(message: session.message!),
+                          ],
+                          if (session.speechRetryAvailable) ...[
+                            const SizedBox(height: 8),
+                            _NavigationMessage(
+                              message:
+                                  'La voix n’a pas démarré ; le guidage visuel continue.',
+                              actionLabel: 'Réessayer la voix',
+                              onAction: _controller.retrySpeech,
+                            ),
                           ],
                         ],
                       ),
@@ -370,10 +400,7 @@ class _LiveNavigationMapState extends State<_LiveNavigationMap> {
   void didUpdateWidget(covariant _LiveNavigationMap oldWidget) {
     super.didUpdateWidget(oldWidget);
     if (_ready &&
-        widget.session.followingUser &&
-        widget.session.snappedPosition != null &&
-        (widget.session.snappedPosition != oldWidget.session.snappedPosition ||
-            !oldWidget.session.followingUser)) {
+        shouldUpdateNavigationCamera(oldWidget.session, widget.session)) {
       _follow();
     }
   }
@@ -480,7 +507,11 @@ class _LiveNavigationMapState extends State<_LiveNavigationMap> {
                 height: 54,
                 child: Transform.rotate(
                   angle:
-                      (session.displayHeadingDegrees - _mapRotation) *
+                      navigationMarkerRotationDegrees(
+                        followingUser: session.followingUser,
+                        headingDegrees: session.displayHeadingDegrees,
+                        mapRotationDegrees: _mapRotation,
+                      ) *
                       math.pi /
                       180,
                   child: Container(
@@ -750,9 +781,15 @@ class _GpsSignalBadge extends StatelessWidget {
 }
 
 class _NavigationMessage extends StatelessWidget {
-  const _NavigationMessage({required this.message});
+  const _NavigationMessage({
+    required this.message,
+    this.actionLabel,
+    this.onAction,
+  });
 
   final String message;
+  final String? actionLabel;
+  final VoidCallback? onAction;
 
   @override
   Widget build(BuildContext context) {
@@ -763,11 +800,26 @@ class _NavigationMessage extends StatelessWidget {
       ),
       child: Padding(
         padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
-        child: Row(
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            const Icon(Icons.info_outline, size: 18),
-            const SizedBox(width: 8),
-            Expanded(child: Semantics(liveRegion: true, child: Text(message))),
+            Row(
+              children: [
+                const Icon(Icons.info_outline, size: 18),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: Semantics(liveRegion: true, child: Text(message)),
+                ),
+              ],
+            ),
+            if (actionLabel != null && onAction != null)
+              Align(
+                alignment: Alignment.centerRight,
+                child: TextButton(
+                  onPressed: onAction,
+                  child: Text(actionLabel!),
+                ),
+              ),
           ],
         ),
       ),

@@ -144,19 +144,46 @@ void main() {
     await harness.dispose();
   });
 
-  test(
-    'falls back to visual guidance when browser speech is unavailable',
-    () async {
-      final harness = _Harness();
-      await harness.controller.start();
+  test('offers a voice retry when browser speech is unavailable', () async {
+    final harness = _Harness();
+    await harness.controller.start();
 
-      harness.speech.errorHandler?.call('not-allowed');
+    harness.speech.errorHandler?.call('not-allowed');
 
-      expect(harness.controller.session.voiceEnabled, isFalse);
-      expect(harness.controller.session.message, contains('guidage visuel'));
-      await harness.dispose();
-    },
-  );
+    expect(harness.controller.session.voiceEnabled, isTrue);
+    expect(harness.controller.session.speechRetryAvailable, isTrue);
+
+    await harness.controller.retrySpeech();
+
+    expect(harness.controller.session.speechRetryAvailable, isFalse);
+    expect(harness.speech.messages.last, 'Tournez à droite sur RUE B');
+    await harness.dispose();
+  });
+
+  test('ignores normal browser speech cancellations', () async {
+    final harness = _Harness();
+    await harness.controller.start();
+
+    harness.speech.errorHandler?.call('canceled');
+    harness.speech.errorHandler?.call('interrupted');
+
+    expect(harness.controller.session.voiceEnabled, isTrue);
+    expect(harness.controller.session.speechRetryAvailable, isFalse);
+    await harness.dispose();
+  });
+
+  test('offers a retry when speaking throws synchronously', () async {
+    final harness = _Harness();
+    await harness.controller.start();
+    await harness.controller.toggleVoice();
+    harness.speech.speakError = StateError('audio unavailable');
+
+    await harness.controller.toggleVoice();
+
+    expect(harness.controller.session.voiceEnabled, isTrue);
+    expect(harness.controller.session.speechRetryAvailable, isTrue);
+    await harness.dispose();
+  });
 }
 
 class _Harness {
@@ -290,6 +317,7 @@ class _FakeStore implements LocalRouteStore {
 class _FakeSpeech implements SpeechGateway {
   final List<String> messages = [];
   int stopCount = 0;
+  Object? speakError;
   ValueChanged<String>? errorHandler;
 
   @override
@@ -302,6 +330,8 @@ class _FakeSpeech implements SpeechGateway {
 
   @override
   Future<void> speak(String text) async {
+    final error = speakError;
+    if (error != null) throw error;
     messages.add(text);
   }
 

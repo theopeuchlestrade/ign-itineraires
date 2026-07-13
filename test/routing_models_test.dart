@@ -72,6 +72,16 @@ void main() {
       expect(step.points.last.latitude, 48.9);
       expect(step.points.last.longitude, 2.4);
     });
+
+    test('parses a roundabout exit number', () {
+      final step = RouteStep.fromJson({
+        'distance': 40,
+        'instruction': {'type': 'roundabout', 'modifier': 'right', 'exit': 2},
+      });
+
+      expect(step.exitNumber, 2);
+      expect(step.instruction, 'Au rond-point, prenez la 2e sortie');
+    });
   });
 
   group('RouteStep instructions', () {
@@ -81,10 +91,19 @@ void main() {
       (
         'fork',
         'slight right',
-        'À l’embranchement, continuez légèrement à droite sur RUE TEST',
+        'À l’embranchement, tenez la droite sur RUE TEST',
       ),
-      ('roundabout', 'right', 'Au rond-point, continuez à droite sur RUE TEST'),
+      ('merge', 'left', 'Insérez-vous à gauche sur RUE TEST'),
+      ('on ramp', 'right', 'Prenez la bretelle à droite sur RUE TEST'),
+      ('off_ramp', 'left', 'Prenez la sortie à gauche sur RUE TEST'),
+      (
+        'end of road',
+        'left',
+        'Au bout de la route, tournez à gauche sur RUE TEST',
+      ),
+      ('roundabout', 'right', 'Entrez dans le rond-point sur RUE TEST'),
       ('new name', 'straight', 'Continuez sur RUE TEST'),
+      ('future maneuver', 'right', 'Tournez à droite sur RUE TEST'),
       ('arrive', 'left', 'Vous êtes arrivé sur votre gauche'),
     ];
 

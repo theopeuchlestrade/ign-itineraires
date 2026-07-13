@@ -19,23 +19,30 @@ class FlutterSpeechService implements SpeechGateway {
 
   final SpeechDriver _driver;
   bool _initialized = false;
+  Future<void>? _initialization;
 
   @override
   void setErrorHandler(ValueChanged<String> handler) =>
       _driver.setErrorHandler(handler);
 
   @override
-  Future<void> initialize() async {
-    if (_initialized) return;
-    await _driver.initialize();
-    _initialized = true;
+  Future<void> initialize() {
+    if (_initialized) return Future<void>.value();
+    final pending = _initialization;
+    if (pending != null) return pending;
+    final initialization = _driver.initialize().then((_) {
+      _initialized = true;
+    });
+    _initialization = initialization;
+    return initialization.whenComplete(() {
+      if (identical(_initialization, initialization)) _initialization = null;
+    });
   }
 
   @override
-  Future<void> speak(String text) async {
-    await initialize();
-    await _driver.stop();
-    await _driver.speak(text);
+  Future<void> speak(String text) {
+    if (_initialized) return _driver.speak(text);
+    return initialize().then((_) => _driver.speak(text));
   }
 
   @override

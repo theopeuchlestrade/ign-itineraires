@@ -103,6 +103,7 @@ class NavigationSession {
     this.followingUser = true,
     this.signalState = NavigationSignalState.acquiring,
     this.displayHeadingDegrees = 0,
+    this.speechRetryAvailable = false,
     this.message,
     this.locationRecovery,
   });
@@ -123,6 +124,7 @@ class NavigationSession {
   final bool followingUser;
   final NavigationSignalState signalState;
   final double displayHeadingDegrees;
+  final bool speechRetryAvailable;
   final String? message;
   final LocationRecovery? locationRecovery;
 
@@ -161,6 +163,7 @@ class NavigationSession {
     bool? followingUser,
     NavigationSignalState? signalState,
     double? displayHeadingDegrees,
+    bool? speechRetryAvailable,
     Object? message = _unchanged,
     Object? locationRecovery = _unchanged,
   }) {
@@ -186,6 +189,7 @@ class NavigationSession {
       signalState: signalState ?? this.signalState,
       displayHeadingDegrees:
           displayHeadingDegrees ?? this.displayHeadingDegrees,
+      speechRetryAvailable: speechRetryAvailable ?? this.speechRetryAvailable,
       message: identical(message, _unchanged)
           ? this.message
           : message as String?,

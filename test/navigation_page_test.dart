@@ -9,6 +9,39 @@ import 'support/fakes.dart';
 import 'support/test_fixtures.dart';
 
 void main() {
+  test('keeps the vehicle upright while following the user', () {
+    expect(
+      navigationMarkerRotationDegrees(
+        followingUser: true,
+        headingDegrees: 270,
+        mapRotationDegrees: 90,
+      ),
+      0,
+    );
+    expect(
+      navigationMarkerRotationDegrees(
+        followingUser: false,
+        headingDegrees: 270,
+        mapRotationDegrees: 90,
+      ),
+      180,
+    );
+  });
+
+  test('updates the followed camera when only heading changes', () {
+    final previous = _navigationSession(headingDegrees: 10);
+    final current = _navigationSession(headingDegrees: 45);
+
+    expect(shouldUpdateNavigationCamera(previous, current), isTrue);
+    expect(
+      shouldUpdateNavigationCamera(
+        current,
+        current.copyWith(followingUser: false),
+      ),
+      isFalse,
+    );
+  });
+
   testWidgets('renders the live map before MapController is ready', (
     tester,
   ) async {
@@ -82,4 +115,53 @@ void main() {
 
     await harness.dispose();
   });
+
+  testWidgets('offers an actionable retry after a speech error', (
+    tester,
+  ) async {
+    final harness = TestAppHarness();
+
+    await tester.pumpWidget(
+      MaterialApp(
+        home: NavigationPage(
+          destination: parisDestination,
+          mode: TravelMode.car,
+          dependencies: harness.dependencies,
+        ),
+      ),
+    );
+    await tester.pump();
+    await tester.pump();
+
+    harness.speech.errorHandler?.call('not-allowed');
+    await tester.pump();
+
+    expect(find.text('Réessayer la voix'), findsOneWidget);
+    final beforeRetry = harness.speech.messages.length;
+    await tester.tap(find.text('Réessayer la voix'));
+    await tester.pump();
+
+    expect(harness.speech.messages, hasLength(beforeRetry + 1));
+    await harness.dispose();
+  });
+}
+
+NavigationSession _navigationSession({required double headingDegrees}) {
+  final position = NavigationPosition(
+    point: const LatLng(48.85, 2.35),
+    accuracyMeters: 5,
+    headingDegrees: headingDegrees,
+    speedMetersPerSecond: 4,
+    timestamp: DateTime(2026),
+  );
+  return NavigationSession(
+    status: NavigationStatus.active,
+    destination: parisDestination,
+    mode: TravelMode.car,
+    voiceEnabled: true,
+    route: urbanRoute,
+    position: position,
+    snappedPosition: position.point,
+    displayHeadingDegrees: headingDegrees,
+  );
 }

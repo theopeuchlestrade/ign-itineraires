@@ -85,6 +85,7 @@ class RouteStep {
     required this.roadName,
     required this.distanceMeters,
     required this.points,
+    this.exitNumber,
   });
 
   final String type;
@@ -92,8 +93,10 @@ class RouteStep {
   final String roadName;
   final double distanceMeters;
   final List<LatLng> points;
+  final int? exitNumber;
 
   String get instruction {
+    final normalizedType = type.replaceAll('_', ' ');
     final direction = switch (modifier) {
       'left' => 'à gauche',
       'right' => 'à droite',
@@ -101,25 +104,70 @@ class RouteStep {
       'slight right' => 'légèrement à droite',
       'sharp left' => 'franchement à gauche',
       'sharp right' => 'franchement à droite',
-      'uturn' => 'et faites demi-tour',
       _ => 'tout droit',
     };
     final road = roadName.isEmpty ? '' : ' sur $roadName';
+    final directedTurn = modifier == 'uturn'
+        ? 'Faites demi-tour$road'
+        : modifier == 'straight'
+        ? 'Continuez tout droit$road'
+        : 'Tournez $direction$road';
+    final exit = exitNumber;
+    final roundaboutExit = exit == null
+        ? ''
+        : ', prenez la ${exit == 1 ? '1re' : '${exit}e'} sortie';
 
-    return switch (type) {
-      'depart' => 'Partez $direction$road',
+    return switch (normalizedType) {
+      'depart' =>
+        modifier == 'straight'
+            ? 'Partez tout droit$road'
+            : roadName.isEmpty
+            ? 'Partez'
+            : 'Partez$road',
       'arrive' =>
         'Vous êtes arrivé${modifier == 'left'
             ? ' sur votre gauche'
             : modifier == 'right'
             ? ' sur votre droite'
             : ''}',
-      'turn' => 'Tournez $direction$road',
-      'fork' => 'À l’embranchement, continuez $direction$road',
-      'roundabout' || 'rotary' => 'Au rond-point, continuez $direction$road',
-      'new name' => 'Continuez$road',
+      'turn' => directedTurn,
+      'merge' =>
+        modifier == 'straight'
+            ? 'Insérez-vous$road'
+            : 'Insérez-vous $direction$road',
+      'ramp' || 'on ramp' =>
+        modifier == 'straight'
+            ? 'Prenez la bretelle$road'
+            : 'Prenez la bretelle $direction$road',
+      'off ramp' =>
+        modifier == 'straight'
+            ? 'Prenez la sortie$road'
+            : 'Prenez la sortie $direction$road',
+      'fork' =>
+        modifier == 'left' || modifier == 'slight left'
+            ? 'À l’embranchement, tenez la gauche$road'
+            : modifier == 'right' || modifier == 'slight right'
+            ? 'À l’embranchement, tenez la droite$road'
+            : 'À l’embranchement, continuez tout droit$road',
+      'end of road' =>
+        modifier == 'uturn'
+            ? 'Au bout de la route, faites demi-tour$road'
+            : 'Au bout de la route, tournez $direction$road',
+      'roundabout' || 'rotary' =>
+        exit == null
+            ? 'Entrez dans le rond-point${roadName.isEmpty ? '' : road}'
+            : 'Au rond-point$roundaboutExit${roadName.isEmpty ? '' : road}',
+      'roundabout turn' => 'Au rond-point, ${_lowercase(directedTurn)}',
+      'exit roundabout' || 'exit rotary' =>
+        roadName.isEmpty ? 'Sortez du rond-point' : 'Sortez du rond-point$road',
+      'new name' =>
+        modifier == 'straight' ? 'Continuez$road' : 'Continuez $direction$road',
       'continue' => 'Continuez $direction$road',
-      _ => 'Continuez $direction$road',
+      'notification' || 'use lane' =>
+        modifier == 'straight'
+            ? 'Continuez tout droit$road'
+            : 'Continuez $direction$road',
+      _ => directedTurn,
     };
   }
 
@@ -138,6 +186,10 @@ class RouteStep {
       modifier: instruction['modifier'] as String? ?? 'straight',
       roadName: left.isNotEmpty ? left : right,
       distanceMeters: (json['distance'] as num? ?? 0).toDouble(),
+      exitNumber: switch (instruction['exit']) {
+        final num value when value.toInt() > 0 => value.toInt(),
+        _ => null,
+      },
       points: coordinates
           .map((coordinate) {
             final pair = coordinate as List<dynamic>;
@@ -150,6 +202,9 @@ class RouteStep {
     );
   }
 }
+
+String _lowercase(String value) =>
+    value.isEmpty ? value : '${value[0].toLowerCase()}${value.substring(1)}';
 
 class RoutePlan {
   const RoutePlan({
