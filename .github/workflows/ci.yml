@@ -135,7 +135,7 @@ jobs:
           --timeout=120
           --no-web-resources-cdn
           --screenshot=build/test-screenshots
-      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+      - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         if: always()
         with:
           name: web-integration-screenshots
@@ -294,7 +294,7 @@ jobs:
           arch: x86_64
           profile: pixel_2
           script: flutter test integration_test/app_flow_test.dart -d emulator-5554
-      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+      - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         if: always()
         with:
           name: android-api-24-screenshots
