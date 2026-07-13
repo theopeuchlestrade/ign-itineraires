@@ -37,12 +37,14 @@ void main() {
       status: NavigationStatus.paused,
       voiceEnabled: false,
       followingUser: false,
+      speechRetryAvailable: true,
       message: null,
     );
 
     expect(updated.status, NavigationStatus.paused);
     expect(updated.voiceEnabled, isFalse);
     expect(updated.followingUser, isFalse);
+    expect(updated.speechRetryAvailable, isTrue);
     expect(updated.message, isNull);
   });
 

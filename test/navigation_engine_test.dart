@@ -19,6 +19,27 @@ void main() {
       expect(update.distanceFromRouteMeters, lessThan(1));
     });
 
+    test('does not skip a maneuver after a 2.5 meter departure step', () {
+      final engine = NavigationEngine(_shortDepartureRoute(), TravelMode.car);
+
+      final initial = engine.update(_position(0, 0));
+      final afterTurn = engine.update(
+        _position(0, 0.00004),
+        previousProgressMeters: initial.progressMeters,
+      );
+      final backwardJitter = engine.update(
+        _position(0, 0.00001),
+        previousProgressMeters: afterTurn.progressMeters,
+      );
+
+      expect(initial.currentStepIndex, 0);
+      expect(initial.upcomingStepIndex, 1);
+      expect(initial.distanceToManeuverMeters, closeTo(2.5, 0.2));
+      expect(afterTurn.currentStepIndex, 1);
+      expect(afterTurn.upcomingStepIndex, 2);
+      expect(backwardJitter.upcomingStepIndex, 2);
+    });
+
     test('keeps route progress monotonic when GPS jumps backwards', () {
       final engine = NavigationEngine(_route(), TravelMode.car);
 
@@ -147,6 +168,46 @@ void main() {
         isNull,
       );
     });
+
+    test('replaying the current instruction marks crossed thresholds', () {
+      final route = _route();
+      final planner = GuidanceAnnouncementPlanner();
+
+      expect(
+        planner.replayCurrent(
+          stepIndex: 1,
+          distanceToManeuverMeters: 45,
+          remainingDistanceMeters: 800,
+          route: route,
+          mode: TravelMode.car,
+        ),
+        'Tournez à droite sur RUE B',
+      );
+      expect(
+        planner.next(
+          update: _guidance(distance: 40),
+          route: route,
+          mode: TravelMode.car,
+        ),
+        isNull,
+      );
+    });
+
+    test('does not replay arrival before the destination', () {
+      final route = _route();
+      final planner = GuidanceAnnouncementPlanner();
+
+      expect(
+        planner.replayCurrent(
+          stepIndex: 2,
+          distanceToManeuverMeters: 400,
+          remainingDistanceMeters: 400,
+          route: route,
+          mode: TravelMode.car,
+        ),
+        'Continuez vers votre destination',
+      );
+    });
   });
 }
 
@@ -206,6 +267,38 @@ RoutePlan _route() {
         type: 'arrive',
         modifier: 'right',
         roadName: 'RUE B',
+        distanceMeters: 0,
+        points: [LatLng(0, 0.01), LatLng(0, 0.01)],
+      ),
+    ],
+  );
+}
+
+RoutePlan _shortDepartureRoute() {
+  return const RoutePlan(
+    points: [LatLng(0, 0), LatLng(0, 0.000025), LatLng(0, 0.01)],
+    distanceMeters: 1000,
+    durationSeconds: 500,
+    resourceVersion: 'short-departure',
+    steps: [
+      RouteStep(
+        type: 'depart',
+        modifier: 'straight',
+        roadName: 'RUE A',
+        distanceMeters: 2.5,
+        points: [LatLng(0, 0), LatLng(0, 0.000025)],
+      ),
+      RouteStep(
+        type: 'turn',
+        modifier: 'left',
+        roadName: 'RUE B',
+        distanceMeters: 997.5,
+        points: [LatLng(0, 0.000025), LatLng(0, 0.01)],
+      ),
+      RouteStep(
+        type: 'arrive',
+        modifier: 'straight',
+        roadName: '',
         distanceMeters: 0,
         points: [LatLng(0, 0.01), LatLng(0, 0.01)],
       ),

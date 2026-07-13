@@ -179,9 +179,10 @@ class DeviceLocationService implements DeviceLocationGateway {
       point: LatLng(position.latitude, position.longitude),
       accuracyMeters: position.accuracy.isFinite ? position.accuracy : 999,
       headingDegrees: position.heading.isFinite ? position.heading : 0,
-      headingAccuracyDegrees: position.headingAccuracy.isFinite
-          ? position.headingAccuracy
-          : 999,
+      headingAccuracyDegrees: normalizedHeadingAccuracy(
+        position.headingAccuracy,
+        isWeb: kIsWeb,
+      ),
       speedMetersPerSecond: position.speed.isFinite && position.speed > 0
           ? position.speed
           : 0,
@@ -226,4 +227,10 @@ class DeviceLocationService implements DeviceLocationGateway {
       }
     });
   }
+}
+
+@visibleForTesting
+double normalizedHeadingAccuracy(double accuracy, {required bool isWeb}) {
+  if (isWeb) return 999;
+  return accuracy.isFinite ? accuracy : 999;
 }
