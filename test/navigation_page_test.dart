@@ -144,6 +144,44 @@ void main() {
     expect(harness.speech.messages, hasLength(beforeRetry + 1));
     await harness.dispose();
   });
+
+  testWidgets('keeps guidance at the top and trip metrics at the bottom', (
+    tester,
+  ) async {
+    final harness = TestAppHarness();
+    addTearDown(harness.dispose);
+    await tester.binding.setSurfaceSize(const Size(390, 844));
+    addTearDown(() => tester.binding.setSurfaceSize(null));
+
+    await tester.pumpWidget(
+      MaterialApp(
+        home: NavigationPage(
+          destination: parisDestination,
+          mode: TravelMode.car,
+          dependencies: harness.dependencies,
+          now: () => DateTime(2026, 1, 1, 14, 2),
+        ),
+      ),
+    );
+    for (var frame = 0; frame < 5; frame++) {
+      await tester.pump(const Duration(milliseconds: 50));
+    }
+
+    final instructionCard = find.ancestor(
+      of: find.text('500 m'),
+      matching: find.byType(Card),
+    );
+    final metricsCard = find.ancestor(
+      of: find.text('Arrivée'),
+      matching: find.byType(Card),
+    );
+
+    expect(tester.getTopLeft(instructionCard).dy, lessThan(80));
+    expect(
+      tester.getBottomRight(metricsCard).dy,
+      moreOrLessEquals(832, epsilon: 1),
+    );
+  });
 }
 
 NavigationSession _navigationSession({required double headingDegrees}) {
