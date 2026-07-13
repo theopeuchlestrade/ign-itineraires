@@ -141,6 +141,64 @@ void main() {
 
       expect(update.reverseDirection, isFalse);
     });
+
+    test('keeps the numbered roundabout instruction until its exit', () {
+      final engine = NavigationEngine(_roundaboutRoute(), TravelMode.car);
+
+      final beforeEntry = engine.update(_position(0, 0.0005));
+      final insideRoundabout = engine.update(
+        _position(0, 0.0012),
+        previousProgressMeters: beforeEntry.progressMeters,
+      );
+
+      expect(beforeEntry.upcomingStepIndex, 1);
+      expect(insideRoundabout.currentStepIndex, 1);
+      expect(insideRoundabout.upcomingStepIndex, 1);
+      expect(insideRoundabout.distanceToManeuverMeters, closeTo(60, 15));
+    });
+  });
+
+  group('NavigationHeadingTracker', () {
+    test('derives the driving direction from successive GPS fixes', () {
+      final tracker = NavigationHeadingTracker(TravelMode.car);
+      final start = _position(
+        48.8566,
+        2.3522,
+        headingDegrees: 0,
+        headingAccuracyDegrees: 999,
+        timestamp: DateTime(2026, 1, 1, 12),
+      );
+      final east = _position(
+        48.8566,
+        2.3524,
+        headingDegrees: 0,
+        headingAccuracyDegrees: 999,
+        timestamp: DateTime(2026, 1, 1, 12, 0, 2),
+      );
+
+      expect(tracker.resolve(start, routeHeadingDegrees: 180), 180);
+      expect(tracker.resolve(east, routeHeadingDegrees: 180), closeTo(90, 1));
+    });
+
+    test('does not rotate for sub-accuracy GPS jitter', () {
+      final tracker = NavigationHeadingTracker(TravelMode.car);
+      final start = _position(
+        48.8566,
+        2.3522,
+        headingDegrees: 90,
+        timestamp: DateTime(2026, 1, 1, 12),
+      );
+      final jitter = _position(
+        48.85662,
+        2.3522,
+        headingDegrees: 270,
+        headingAccuracyDegrees: 999,
+        timestamp: DateTime(2026, 1, 1, 12, 0, 1),
+      );
+
+      expect(tracker.resolve(start, routeHeadingDegrees: 90), 90);
+      expect(tracker.resolve(jitter, routeHeadingDegrees: 0), 90);
+    });
   });
 
   group('GuidanceAnnouncementPlanner', () {
@@ -208,6 +266,48 @@ void main() {
         'Continuez vers votre destination',
       );
     });
+
+    test('repeats the numbered exit once inside a roundabout', () {
+      final route = _roundaboutRoute();
+      final planner = GuidanceAnnouncementPlanner();
+
+      expect(
+        planner.next(
+          update: _guidance(
+            distance: 45,
+            currentStepIndex: 0,
+            upcomingStepIndex: 1,
+          ),
+          route: route,
+          mode: TravelMode.car,
+        ),
+        contains('au rond-point, prenez la 3e sortie'),
+      );
+      expect(
+        planner.next(
+          update: _guidance(
+            distance: 40,
+            currentStepIndex: 1,
+            upcomingStepIndex: 1,
+          ),
+          route: route,
+          mode: TravelMode.car,
+        ),
+        'Prenez maintenant la 3e sortie sur RUE B',
+      );
+      expect(
+        planner.next(
+          update: _guidance(
+            distance: 20,
+            currentStepIndex: 1,
+            upcomingStepIndex: 1,
+          ),
+          route: route,
+          mode: TravelMode.car,
+        ),
+        isNull,
+      );
+    });
   });
 }
 
@@ -228,13 +328,17 @@ NavigationPosition _position(
   );
 }
 
-GuidanceUpdate _guidance({required double distance}) {
+GuidanceUpdate _guidance({
+  required double distance,
+  int currentStepIndex = 0,
+  int upcomingStepIndex = 1,
+}) {
   return GuidanceUpdate(
     snappedPosition: const LatLng(0, 0.002),
     progressMeters: 200,
     distanceFromRouteMeters: 0,
-    currentStepIndex: 0,
-    upcomingStepIndex: 1,
+    currentStepIndex: currentStepIndex,
+    upcomingStepIndex: upcomingStepIndex,
     distanceToManeuverMeters: distance,
     remainingDistanceMeters: 800,
     remainingDurationSeconds: 400,
@@ -301,6 +405,51 @@ RoutePlan _shortDepartureRoute() {
         roadName: '',
         distanceMeters: 0,
         points: [LatLng(0, 0.01), LatLng(0, 0.01)],
+      ),
+    ],
+  );
+}
+
+RoutePlan _roundaboutRoute() {
+  return const RoutePlan(
+    points: [
+      LatLng(0, 0),
+      LatLng(0, 0.001),
+      LatLng(0, 0.0018),
+      LatLng(0, 0.0038),
+    ],
+    distanceMeters: 380,
+    durationSeconds: 120,
+    resourceVersion: 'roundabout',
+    steps: [
+      RouteStep(
+        type: 'depart',
+        modifier: 'straight',
+        roadName: 'RUE A',
+        distanceMeters: 100,
+        points: [],
+      ),
+      RouteStep(
+        type: 'roundabout',
+        modifier: 'right',
+        roadName: 'RUE B',
+        distanceMeters: 80,
+        points: [],
+        exitNumber: 3,
+      ),
+      RouteStep(
+        type: 'continue',
+        modifier: 'straight',
+        roadName: 'RUE B',
+        distanceMeters: 200,
+        points: [],
+      ),
+      RouteStep(
+        type: 'arrive',
+        modifier: 'straight',
+        roadName: 'RUE B',
+        distanceMeters: 0,
+        points: [],
       ),
     ],
   );

@@ -26,6 +26,7 @@ class NavigationController extends ChangeNotifier {
     Duration Function(int attempt)? streamRetryDelay,
   }) : _now = now ?? DateTime.now,
        _streamRetryDelay = streamRetryDelay ?? _defaultStreamRetryDelay,
+       _headingTracker = NavigationHeadingTracker(mode),
        session = NavigationSession(
          status: NavigationStatus.acquiringPosition,
          destination: destination,
@@ -46,6 +47,7 @@ class NavigationController extends ChangeNotifier {
   final WakeLockGateway _wakeLock;
   final DateTime Function() _now;
   final Duration Function(int attempt) _streamRetryDelay;
+  final NavigationHeadingTracker _headingTracker;
 
   NavigationSession session;
   NavigationEngine? _engine;
@@ -134,6 +136,7 @@ class NavigationController extends ChangeNotifier {
   }) async {
     if (!_canContinue(operation)) return;
     _engine = NavigationEngine(route, mode);
+    _headingTracker.reset();
     _progressMeters = null;
     _deviationPolicy.reset();
     _signalPolicy.reset();
@@ -154,7 +157,10 @@ class NavigationController extends ChangeNotifier {
         remainingDurationSeconds: update.remainingDurationSeconds,
         distanceFromRouteMeters: update.distanceFromRouteMeters,
         signalState: NavigationSignalState.reliable,
-        displayHeadingDegrees: _displayHeading(position, update),
+        displayHeadingDegrees: _headingTracker.resolve(
+          position,
+          routeHeadingDegrees: update.routeHeadingDegrees,
+        ),
         message: null,
       ),
     );
@@ -270,7 +276,10 @@ class NavigationController extends ChangeNotifier {
         remainingDurationSeconds: update.remainingDurationSeconds,
         distanceFromRouteMeters: update.distanceFromRouteMeters,
         signalState: NavigationSignalState.reliable,
-        displayHeadingDegrees: _displayHeading(position, update),
+        displayHeadingDegrees: _headingTracker.resolve(
+          position,
+          routeHeadingDegrees: update.routeHeadingDegrees,
+        ),
         message: null,
       ),
     );
@@ -483,12 +492,6 @@ class NavigationController extends ChangeNotifier {
     if (session.voiceEnabled && !session.speechRetryAvailable) {
       await _speak('Vous êtes arrivé à destination.');
     }
-  }
-
-  double _displayHeading(NavigationPosition position, GuidanceUpdate update) {
-    return position.hasReliableHeading
-        ? position.headingDegrees
-        : update.routeHeadingDegrees;
   }
 
   void _startSignalWatchdog(int operation) {

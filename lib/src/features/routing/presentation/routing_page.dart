@@ -133,6 +133,17 @@ class _RoutingPageState extends State<RoutingPage> {
   Future<void> _startIntegratedNavigation() async {
     final destination = _controller.destination;
     if (destination == null) return;
+    if (kIsWeb) {
+      try {
+        // WebKit only authorizes later speech after a synthesis request made
+        // directly from a user gesture. The web driver performs that silent
+        // activation here, before GPS and routing await network responses.
+        await widget.dependencies.speech.initialize();
+      } catch (_) {
+        // Navigation remains usable and exposes a retry if synthesis fails.
+      }
+    }
+    if (!mounted) return;
     await Navigator.of(context).push<void>(
       MaterialPageRoute(
         builder: (_) => NavigationPage(

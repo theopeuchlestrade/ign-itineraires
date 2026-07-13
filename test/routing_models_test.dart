@@ -82,6 +82,23 @@ void main() {
       expect(step.exitNumber, 2);
       expect(step.instruction, 'Au rond-point, prenez la 2e sortie');
     });
+
+    test('keeps a numbered exit for a roundabout turn', () {
+      const step = RouteStep(
+        type: 'roundabout_turn',
+        modifier: 'right',
+        roadName: 'RUE TEST',
+        distanceMeters: 40,
+        points: [],
+        exitNumber: 1,
+      );
+
+      expect(step.isRoundabout, isTrue);
+      expect(
+        step.instruction,
+        'Au rond-point, prenez la 1re sortie sur RUE TEST',
+      );
+    });
   });
 
   group('RouteStep instructions', () {
