@@ -24,6 +24,7 @@ jobs:
         with:
           scan-args: |-
             --lockfile=pubspec.lock
+            --lockfile=package-lock.json
 
   scan-pr:
     if: github.repository_visibility == 'public' && github.event_name == 'pull_request'
@@ -31,6 +32,7 @@ jobs:
     with:
       scan-args: |-
         --lockfile=pubspec.lock
+        --lockfile=package-lock.json
 
   scan-scheduled:
     if: >-
@@ -40,3 +42,4 @@ jobs:
     with:
       scan-args: |-
         --lockfile=pubspec.lock
+        --lockfile=package-lock.json

@@ -41,6 +41,36 @@ jobs:
       - name: Run gitleaks
         run: docker run --rm -v "${PWD}:/repo" --workdir /repo ghcr.io/gitleaks/gitleaks:v8.30.0@sha256:691af3c7c5a48b16f187ce3446d5f194838f91238f27270ed36eef6359a574d9 detect --source=. --redact=100 --verbose
 
+  dependency-audit:
+    name: Dependency vulnerability audit
+    if: github.event_name == 'pull_request' || github.event_name == 'workflow_dispatch'
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
+      - name: Scan Dart and npm lockfiles
+        uses: google/osv-scanner-action/osv-scanner-action@9a498708959aeaef5ef730655706c5a1df1edbc2 # v2.3.8
+        with:
+          scan-args: |-
+            --lockfile=pubspec.lock
+            --lockfile=package-lock.json
+
+  dependency-review:
+    name: Dependency Review
+    if: github.event_name == 'pull_request' || github.event_name == 'workflow_dispatch'
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
+      - name: Review dependency changes
+        if: github.event_name == 'pull_request' && github.event.repository.private == false
+        uses: actions/dependency-review-action@a1d282b36b6f3519aa1f3fc636f609c47dddb294 # v5.0.0
+        with:
+          fail-on-severity: moderate
+      - name: Explain unavailable dependency review
+        if: github.event_name != 'pull_request' || github.event.repository.private
+        run: echo "Dependency Review only evaluates pull requests in supported repositories."
+
   quality:
     name: Quality, tests and coverage
     if: github.event_name == 'pull_request' || github.event_name == 'push' || github.event_name == 'workflow_dispatch'
@@ -233,6 +263,8 @@ jobs:
     needs:
       - workflow-lint
       - secret-scan
+      - dependency-audit
+      - dependency-review
       - quality
       - linux-goldens
       - web-integration
@@ -244,6 +276,8 @@ jobs:
         run: |
           if [ "${{ needs.workflow-lint.result }}" != "success" ] ||
              [ "${{ needs.secret-scan.result }}" != "success" ] ||
+             [ "${{ needs.dependency-audit.result }}" != "success" ] ||
+             [ "${{ needs.dependency-review.result }}" != "success" ] ||
              [ "${{ needs.quality.result }}" != "success" ] ||
              [ "${{ needs.linux-goldens.result }}" != "success" ] ||
              [ "${{ needs.web-integration.result }}" != "success" ] ||

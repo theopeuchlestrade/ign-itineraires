@@ -126,6 +126,27 @@ void main() {
     expect(harness.store.favorites, isEmpty);
   });
 
+  test(
+    'ignores a second favorite mutation while persistence is pending',
+    () async {
+      controller.setDestination(parisDestination);
+      final gate = Completer<void>();
+      harness.store.saveFavoritesGate = gate;
+
+      final first = controller.toggleDestinationFavorite();
+      final second = controller.toggleDestinationFavorite();
+
+      expect(controller.favoriteMutationInProgress, isTrue);
+      expect(controller.destinationIsFavorite, isTrue);
+      expect(harness.store.saveFavoritesCalls, 1);
+      gate.complete();
+      await Future.wait([first, second]);
+
+      expect(controller.favoriteMutationInProgress, isFalse);
+      expect(harness.store.favorites, [parisDestination]);
+    },
+  );
+
   test('rolls back a favorite when local persistence fails', () async {
     controller.setDestination(parisDestination);
     harness.store.saveFavoritesError = const LocalStoreException('disk full');
@@ -163,6 +184,26 @@ void main() {
     expect(controller.historyEnabled, isFalse);
     expect(controller.messageIsError, isTrue);
   });
+
+  test(
+    'ignores a second history mutation while persistence is pending',
+    () async {
+      final gate = Completer<void>();
+      harness.store.saveHistoryGate = gate;
+
+      final first = controller.setHistoryEnabled(true);
+      final second = controller.setHistoryEnabled(true);
+
+      expect(controller.historyMutationInProgress, isTrue);
+      expect(harness.store.saveHistoryCalls, 1);
+      gate.complete();
+      await Future.wait([first, second]);
+
+      expect(controller.historyMutationInProgress, isFalse);
+      expect(controller.historyEnabled, isTrue);
+      expect(harness.store.historyEnabled, isTrue);
+    },
+  );
 
   test('keeps history enabled when clearing persisted recents fails', () async {
     await controller.setHistoryEnabled(true);

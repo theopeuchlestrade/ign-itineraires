@@ -11,6 +11,8 @@ import 'package:ign_itineraires/src/features/routing/domain/navigation_models.da
 import 'package:ign_itineraires/src/features/routing/domain/navigation_policies.dart';
 import 'package:ign_itineraires/src/features/routing/domain/routing_models.dart';
 
+part 'navigation_lifecycle.dart';
+
 class NavigationController extends ChangeNotifier {
   NavigationController(
     this._api,
@@ -61,8 +63,12 @@ class NavigationController extends ChangeNotifier {
   int _operationGeneration = 0;
   bool _handlingPosition = false;
   bool _foreground = true;
+  bool _wantsForeground = true;
   bool _disposed = false;
+  bool _recoveringStream = false;
+  final _lifecycleTransitions = _LifecycleTransitionQueue();
   int _streamRetryAttempts = 0;
+  bool voiceMutationInProgress = false;
 
   Future<void> start() async {
     final operation = ++_operationGeneration;
@@ -356,49 +362,62 @@ class NavigationController extends ChangeNotifier {
     }
   }
 
-  Future<void> pause() async {
-    if (_disposed || !_foreground) return;
+  Future<void> pause() {
+    if (_disposed || !_wantsForeground) return Future<void>.value();
+    _wantsForeground = false;
     _foreground = false;
     _operationGeneration++;
-    await _stopForegroundTracking();
-    await _stopSpeechAndWakeLock();
-    if (_disposed ||
-        session.status == NavigationStatus.stopped ||
-        session.status == NavigationStatus.arrived) {
-      return;
+    if (session.status != NavigationStatus.stopped &&
+        session.status != NavigationStatus.arrived) {
+      _setSession(
+        session.copyWith(
+          status: NavigationStatus.paused,
+          signalState: NavigationSignalState.interrupted,
+          message: 'Guidage en pause pendant que l’application est masquée.',
+        ),
+      );
     }
-    _setSession(
-      session.copyWith(
-        status: NavigationStatus.paused,
-        signalState: NavigationSignalState.interrupted,
-        message: 'Guidage en pause pendant que l’application est masquée.',
-      ),
-    );
+    return _lifecycleTransitions.add(() async {
+      await _stopForegroundTracking();
+      await _stopSpeechAndWakeLock();
+    });
   }
 
-  Future<void> resume() async {
-    if (session.status != NavigationStatus.paused) return;
-    _foreground = true;
-    final operation = ++_operationGeneration;
-    _setSession(
-      session.copyWith(
-        status: NavigationStatus.acquiringPosition,
-        signalState: NavigationSignalState.acquiring,
-        message: 'Reprise du guidage…',
-      ),
-    );
-    try {
-      final position = await _location.currentPosition(navigationMode: mode);
-      if (!_canContinue(operation)) return;
-      final issue = _signalPolicy.issueFor(position);
-      if (issue != null) throw DeviceLocationException(issue);
-      await _reroute(position, operation: operation, force: true);
-    } on DeviceLocationException catch (error) {
-      _fail(error.message, recovery: error.recovery);
+  Future<void> resume() {
+    if (_disposed || _wantsForeground) return Future<void>.value();
+    if (session.status == NavigationStatus.stopped ||
+        session.status == NavigationStatus.arrived) {
+      return Future<void>.value();
     }
+    _wantsForeground = true;
+    return _lifecycleTransitions.add(() async {
+      if (_disposed || !_wantsForeground) return;
+      _foreground = true;
+      final operation = ++_operationGeneration;
+      _setSession(
+        session.copyWith(
+          status: NavigationStatus.acquiringPosition,
+          signalState: NavigationSignalState.acquiring,
+          message: 'Reprise du guidage…',
+        ),
+      );
+      try {
+        final position = await _location.currentPosition(navigationMode: mode);
+        if (!_canContinue(operation)) return;
+        final issue = _signalPolicy.issueFor(position);
+        if (issue != null) throw DeviceLocationException(issue);
+        await _reroute(position, operation: operation, force: true);
+      } on DeviceLocationException catch (error) {
+        if (_canContinue(operation)) {
+          _fail(error.message, recovery: error.recovery);
+        }
+      }
+    });
   }
 
   Future<void> toggleVoice() async {
+    if (voiceMutationInProgress) return;
+    voiceMutationInProgress = true;
     final enabled = !session.voiceEnabled;
     _setSession(
       session.copyWith(voiceEnabled: enabled, speechRetryAvailable: false),
@@ -421,6 +440,9 @@ class NavigationController extends ChangeNotifier {
               'La voix est modifiée pour cette session, mais la préférence n’a pas pu être enregistrée.',
         ),
       );
+    } finally {
+      voiceMutationInProgress = false;
+      if (!_disposed) notifyListeners();
     }
   }
 
@@ -434,12 +456,15 @@ class NavigationController extends ChangeNotifier {
     _setSession(session.copyWith(followingUser: following));
   }
 
-  Future<void> stop() async {
+  Future<void> stop() {
+    _wantsForeground = false;
     _foreground = false;
     _operationGeneration++;
-    await _stopForegroundTracking();
-    await _stopSpeechAndWakeLock();
     _setSession(session.copyWith(status: NavigationStatus.stopped));
+    return _lifecycleTransitions.add(() async {
+      await _stopForegroundTracking();
+      await _stopSpeechAndWakeLock();
+    });
   }
 
   Future<void> _arrive(int operation) async {
@@ -489,21 +514,26 @@ class NavigationController extends ChangeNotifier {
   }
 
   Future<void> _handleStreamError(int operation) async {
-    if (!_canContinue(operation)) return;
-    _signalWatchdog?.cancel();
-    _signalWatchdog = null;
-    await _positionSubscription?.cancel();
-    _positionSubscription = null;
-    if (!_canContinue(operation)) return;
-    _setSession(
-      session.copyWith(
-        signalState: NavigationSignalState.interrupted,
-        message: 'Signal GPS interrompu. Nouvelle tentative…',
-      ),
-    );
-    _streamRetryAttempts++;
-    await Future<void>.delayed(_streamRetryDelay(_streamRetryAttempts));
-    if (_canContinue(operation)) await _subscribeToPositions(operation);
+    if (!_canContinue(operation) || _recoveringStream) return;
+    _recoveringStream = true;
+    try {
+      _signalWatchdog?.cancel();
+      _signalWatchdog = null;
+      await _positionSubscription?.cancel();
+      _positionSubscription = null;
+      if (!_canContinue(operation)) return;
+      _setSession(
+        session.copyWith(
+          signalState: NavigationSignalState.interrupted,
+          message: 'Signal GPS interrompu. Nouvelle tentative…',
+        ),
+      );
+      _streamRetryAttempts++;
+      await Future<void>.delayed(_streamRetryDelay(_streamRetryAttempts));
+      if (_canContinue(operation)) await _subscribeToPositions(operation);
+    } finally {
+      _recoveringStream = false;
+    }
   }
 
   bool _canContinue(int operation) =>
@@ -600,6 +630,7 @@ class NavigationController extends ChangeNotifier {
   @override
   void dispose() {
     _disposed = true;
+    _wantsForeground = false;
     _foreground = false;
     _operationGeneration++;
     _signalWatchdog?.cancel();

@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:math' as math;
 import 'dart:ui' as ui;
 
 import 'package:flutter/foundation.dart';
@@ -68,6 +69,8 @@ class FakeDeviceLocation implements DeviceLocationGateway {
   DeviceLocationException? error;
   int currentPositionCalls = 0;
   int watchCalls = 0;
+  int activeWatchers = 0;
+  int maximumActiveWatchers = 0;
   int openLocationSettingsCalls = 0;
   int openAppSettingsCalls = 0;
   bool settingsOpenResult = true;
@@ -100,7 +103,23 @@ class FakeDeviceLocation implements DeviceLocationGateway {
   @override
   Stream<NavigationPosition> watchPositions(TravelMode mode) {
     watchCalls++;
-    return _positions.stream;
+    return Stream<NavigationPosition>.multi((controller) {
+      activeWatchers++;
+      maximumActiveWatchers = math.max(maximumActiveWatchers, activeWatchers);
+      var active = true;
+      final subscription = _positions.stream.listen(
+        controller.add,
+        onError: controller.addError,
+        onDone: controller.close,
+      );
+      controller.onCancel = () async {
+        await subscription.cancel();
+        if (active) {
+          active = false;
+          activeWatchers--;
+        }
+      };
+    });
   }
 
   @override
@@ -126,9 +145,19 @@ class MemoryRouteStore implements LocalRouteStore {
   Object? saveHistoryError;
   Object? saveRecentsError;
   Object? saveVoiceError;
+  Completer<void>? clearRecentsGate;
+  Completer<void>? saveFavoritesGate;
+  Completer<void>? saveHistoryGate;
+  Completer<void>? saveVoiceGate;
+  int clearRecentsCalls = 0;
+  int saveFavoritesCalls = 0;
+  int saveHistoryCalls = 0;
+  int saveVoiceCalls = 0;
 
   @override
   Future<void> clearRecents() async {
+    clearRecentsCalls++;
+    await clearRecentsGate?.future;
     if (clearRecentsError case final error?) throw error;
     recents = [];
   }
@@ -147,12 +176,16 @@ class MemoryRouteStore implements LocalRouteStore {
 
   @override
   Future<void> saveFavorites(List<Place> value) async {
+    saveFavoritesCalls++;
+    await saveFavoritesGate?.future;
     if (saveFavoritesError case final error?) throw error;
     favorites = List.of(value);
   }
 
   @override
   Future<void> saveHistoryEnabled(bool enabled) async {
+    saveHistoryCalls++;
+    await saveHistoryGate?.future;
     if (saveHistoryError case final error?) throw error;
     historyEnabled = enabled;
   }
@@ -165,6 +198,8 @@ class MemoryRouteStore implements LocalRouteStore {
 
   @override
   Future<void> saveVoiceEnabled(bool enabled) async {
+    saveVoiceCalls++;
+    await saveVoiceGate?.future;
     if (saveVoiceError case final error?) throw error;
     voiceEnabled = enabled;
   }
@@ -175,6 +210,7 @@ class FakeSpeech implements SpeechGateway {
   ValueChanged<String>? errorHandler;
   bool initialized = false;
   int stopCalls = 0;
+  Completer<void>? stopGate;
 
   @override
   Future<void> initialize() async => initialized = true;
@@ -191,7 +227,10 @@ class FakeSpeech implements SpeechGateway {
   }
 
   @override
-  Future<void> stop() async => stopCalls++;
+  Future<void> stop() async {
+    stopCalls++;
+    await stopGate?.future;
+  }
 }
 
 class FakeWakeLock implements WakeLockGateway {
