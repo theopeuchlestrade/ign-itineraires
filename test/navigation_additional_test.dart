@@ -105,6 +105,22 @@ void main() {
     expect(retryAttempts, [1, 2]);
   });
 
+  test(
+    'keeps a single GPS subscription after simultaneous stream errors',
+    () async {
+      await controller.start();
+
+      harness.location.emitError(Exception('first interruption'));
+      harness.location.emitError(Exception('duplicate interruption'));
+      await Future<void>.delayed(Duration.zero);
+      await Future<void>.delayed(Duration.zero);
+
+      expect(harness.location.maximumActiveWatchers, 1);
+      expect(harness.location.activeWatchers, 1);
+      expect(harness.location.watchCalls, 2);
+    },
+  );
+
   test('fails cleanly when fresh GPS is unavailable on resume', () async {
     await controller.start();
     await controller.pause();
@@ -117,6 +133,66 @@ void main() {
     expect(controller.session.status, NavigationStatus.error);
     expect(controller.session.message, 'Position indisponible');
   });
+
+  test(
+    'resumes after a pause whose speech shutdown is still pending',
+    () async {
+      await controller.start();
+      final gate = Completer<void>();
+      harness.speech.stopGate = gate;
+
+      final pause = controller.pause();
+      expect(controller.session.status, NavigationStatus.paused);
+      final resume = controller.resume();
+      await Future<void>.delayed(Duration.zero);
+
+      expect(harness.api.routeCalls, 1);
+      gate.complete();
+      await Future.wait([pause, resume]);
+
+      expect(controller.session.status, NavigationStatus.active);
+      expect(harness.api.routeCalls, 2);
+      expect(harness.location.maximumActiveWatchers, 1);
+    },
+  );
+
+  test('rapid pause resume pause keeps guidance paused', () async {
+    await controller.start();
+    final gate = Completer<void>();
+    harness.speech.stopGate = gate;
+
+    final firstPause = controller.pause();
+    final resume = controller.resume();
+    final finalPause = controller.pause();
+    gate.complete();
+    await Future.wait([firstPause, resume, finalPause]);
+
+    expect(controller.session.status, NavigationStatus.paused);
+    expect(harness.api.routeCalls, 1);
+    expect(harness.location.activeWatchers, 0);
+  });
+
+  test(
+    'ignores a second voice mutation while persistence is pending',
+    () async {
+      await controller.start();
+      final gate = Completer<void>();
+      harness.store.saveVoiceGate = gate;
+
+      final first = controller.toggleVoice();
+      final second = controller.toggleVoice();
+      await Future<void>.delayed(Duration.zero);
+
+      expect(controller.voiceMutationInProgress, isTrue);
+      expect(controller.session.voiceEnabled, isFalse);
+      expect(harness.store.saveVoiceCalls, 1);
+      gate.complete();
+      await Future.wait([first, second]);
+
+      expect(controller.voiceMutationInProgress, isFalse);
+      expect(harness.store.voiceEnabled, isFalse);
+    },
+  );
 
   test('allows a new reroute attempt after a failed cooldown period', () async {
     await controller.start();

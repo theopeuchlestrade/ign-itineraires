@@ -10,7 +10,7 @@ Describe the problem or goal addressed by this pull request.
 
 - [ ] `dart format --output=none --set-exit-if-changed lib test integration_test test_driver tool`
 - [ ] `flutter analyze`
-- [ ] `flutter test --coverage --exclude-tags live`
+- [ ] `flutter test --coverage --exclude-tags "live || golden"`
 - [ ] `dart run tool/check_coverage.dart`
 - [ ] `ruby scripts/check_markdown_links.rb`
 - [ ] Relevant web, Android, iOS, integration, golden, or live checks were run.

@@ -25,12 +25,15 @@ class IgnRouteMap extends StatefulWidget {
     required this.destination,
     required this.route,
     this.tileProvider,
+    this.mapControllerFactory,
   });
 
   final Place? start;
   final Place? destination;
   final RoutePlan? route;
   final TileProvider? tileProvider;
+  @visibleForTesting
+  final MapController Function()? mapControllerFactory;
 
   @override
   State<IgnRouteMap> createState() => _IgnRouteMapState();
@@ -39,7 +42,19 @@ class IgnRouteMap extends StatefulWidget {
 class _IgnRouteMapState extends State<IgnRouteMap> {
   static const _paris = LatLng(46.603354, 1.888334);
 
-  final MapController _mapController = MapController();
+  late final MapController _mapController;
+
+  @override
+  void initState() {
+    super.initState();
+    _mapController = widget.mapControllerFactory?.call() ?? MapController();
+  }
+
+  @override
+  void dispose() {
+    _mapController.dispose();
+    super.dispose();
+  }
 
   @override
   void didUpdateWidget(covariant IgnRouteMap oldWidget) {

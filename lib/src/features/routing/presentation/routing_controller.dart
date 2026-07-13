@@ -21,6 +21,8 @@ class RoutingController extends ChangeNotifier {
   bool historyEnabled = false;
   bool locating = false;
   bool calculating = false;
+  bool favoriteMutationInProgress = false;
+  bool historyMutationInProgress = false;
   String? message;
   bool messageIsError = false;
   LocationRecovery? locationRecovery;
@@ -198,7 +200,8 @@ class RoutingController extends ChangeNotifier {
 
   Future<void> toggleDestinationFavorite() async {
     final place = destination;
-    if (place == null) return;
+    if (place == null || favoriteMutationInProgress) return;
+    favoriteMutationInProgress = true;
     final previous = favorites;
     if (previous.contains(place)) {
       favorites = previous.where((item) => item != place).toList();
@@ -213,6 +216,8 @@ class RoutingController extends ChangeNotifier {
     } catch (_) {
       favorites = previous;
       _showError('Le favori n’a pas pu être enregistré.');
+    } finally {
+      favoriteMutationInProgress = false;
       _notify();
     }
   }
@@ -231,27 +236,34 @@ class RoutingController extends ChangeNotifier {
   }
 
   Future<void> setHistoryEnabled(bool enabled) async {
-    if (historyEnabled == enabled) return;
+    if (historyEnabled == enabled || historyMutationInProgress) return;
+    historyMutationInProgress = true;
+    _notify();
     try {
       if (!enabled) await _store.clearRecents();
       await _store.saveHistoryEnabled(enabled);
+      historyEnabled = enabled;
+      if (!enabled) recents = const [];
     } catch (_) {
       _showError('La préférence d’historique n’a pas pu être enregistrée.');
-      _notify();
       return;
+    } finally {
+      historyMutationInProgress = false;
+      _notify();
     }
-    historyEnabled = enabled;
-    if (!enabled) recents = const [];
-    _notify();
   }
 
   Future<void> clearRecents() async {
+    if (historyMutationInProgress) return;
+    historyMutationInProgress = true;
+    _notify();
     try {
       await _store.clearRecents();
       recents = const [];
-      _notify();
     } catch (_) {
       _showError('L’historique n’a pas pu être effacé.');
+    } finally {
+      historyMutationInProgress = false;
       _notify();
     }
   }

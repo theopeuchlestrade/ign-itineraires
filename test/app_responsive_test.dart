@@ -1,8 +1,6 @@
 @Tags(['golden'])
 library;
 
-import 'dart:io';
-
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -15,13 +13,7 @@ import 'support/fakes.dart';
 import 'support/test_fixtures.dart';
 
 void main() {
-  final defaultComparator = goldenFileComparator;
-
   setUpAll(() async {
-    goldenFileComparator = _TolerantGoldenComparator(
-      Uri.file('${Directory.current.path}/test/app_responsive_test.dart'),
-      tolerance: 0.05,
-    );
     await (FontLoader('Manrope')..addFont(
           rootBundle.load('assets/fonts/Manrope-VariableFont_wght.ttf'),
         ))
@@ -29,10 +21,6 @@ void main() {
     await (FontLoader(
       'MaterialIcons',
     )..addFont(rootBundle.load('fonts/MaterialIcons-Regular.otf'))).load();
-  });
-
-  tearDownAll(() {
-    goldenFileComparator = defaultComparator;
   });
 
   final goldenCases = <_GoldenCase>[
@@ -141,6 +129,7 @@ void main() {
             destination: parisDestination,
             mode: TravelMode.car,
             dependencies: harness.dependencies,
+            now: () => DateTime(2026, 1, 1, 14, 2),
           ),
         ),
       );
@@ -178,28 +167,6 @@ void main() {
     expect(destinationFocused, isTrue);
     await tester.pump(const Duration(milliseconds: 200));
   });
-}
-
-class _TolerantGoldenComparator extends LocalFileComparator {
-  _TolerantGoldenComparator(super.testFile, {required this._tolerance});
-
-  final double _tolerance;
-
-  @override
-  Future<bool> compare(Uint8List imageBytes, Uri golden) async {
-    final result = await GoldenFileComparator.compareLists(
-      imageBytes,
-      await getGoldenBytes(golden),
-    );
-    final passed = result.passed || result.diffPercent <= _tolerance;
-    if (passed) {
-      result.dispose();
-      return true;
-    }
-    final error = await generateFailureOutput(result, golden, basedir);
-    result.dispose();
-    throw FlutterError(error);
-  }
 }
 
 class _GoldenCase {

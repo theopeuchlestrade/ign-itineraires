@@ -6,10 +6,15 @@ must never be committed, uploaded as artifacts, or copied into defect reports.
 
 ## Current Baseline
 
-The validation completed on 11 July 2026 produced:
+The local validation completed on 13 July 2026 produced:
 
-- 100 passing unit and widget tests, plus nine passing golden and keyboard cases
-- 91.9% coverage for routing domain logic, controllers, and API parsing
+- 129 passing unit and widget tests, plus nine passing exact golden and keyboard cases;
+- 92.5% coverage for routing domain logic, controllers, and API parsing;
+- a successful self-contained web release build.
+
+The most recent complete platform validation, completed on 11 July 2026, also
+produced:
+
 - Four passing deterministic Chrome journeys
 - Four passing live Geoplatform contracts
 - Successful web release, Android debug, and iOS Simulator builds
@@ -28,7 +33,7 @@ The CI must pass before merging:
 - Deterministic planning, persistence, failure, and guidance-start flows in Chrome;
 - Web release build, production container smoke test, Android debug APK, and
   unsigned iOS Simulator build;
-- OSV dependency scan.
+- OSV dependency scans for the Dart and npm lockfiles.
 
 Equivalent local commands:
 
