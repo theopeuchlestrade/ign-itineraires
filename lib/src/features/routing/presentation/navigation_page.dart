@@ -65,6 +65,36 @@ double navigationMarkerRotationDegrees({
   return followingUser ? 0 : headingDegrees - mapRotationDegrees;
 }
 
+@visibleForTesting
+IconData navigationInstructionIcon(RouteStep? step) {
+  if (step == null) return Icons.navigation_rounded;
+  if (step.normalizedType == 'arrive') return Icons.flag_rounded;
+  if (step.isRoundabout) return Icons.roundabout_right_rounded;
+  if (step.normalizedType == 'merge') return Icons.merge_rounded;
+  if (step.normalizedType == 'fork') {
+    return step.modifier.contains('left')
+        ? Icons.fork_left_rounded
+        : Icons.fork_right_rounded;
+  }
+  if (step.normalizedType == 'ramp' ||
+      step.normalizedType == 'on ramp' ||
+      step.normalizedType == 'off ramp') {
+    return step.modifier.contains('left')
+        ? Icons.ramp_left_rounded
+        : Icons.ramp_right_rounded;
+  }
+  return switch (step.modifier) {
+    'slight left' => Icons.turn_slight_left_rounded,
+    'slight right' => Icons.turn_slight_right_rounded,
+    'sharp left' => Icons.turn_sharp_left_rounded,
+    'sharp right' => Icons.turn_sharp_right_rounded,
+    'left' => Icons.turn_left_rounded,
+    'right' => Icons.turn_right_rounded,
+    'uturn' => Icons.u_turn_left_rounded,
+    _ => Icons.straight_rounded,
+  };
+}
+
 class _NavigationPageState extends State<NavigationPage>
     with WidgetsBindingObserver {
   late final NavigationController _controller;

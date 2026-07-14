@@ -209,11 +209,15 @@ class FakeSpeech implements SpeechGateway {
   final List<String> messages = [];
   ValueChanged<String>? errorHandler;
   bool initialized = false;
+  int initializeCalls = 0;
   int stopCalls = 0;
   Completer<void>? stopGate;
 
   @override
-  Future<void> initialize() async => initialized = true;
+  Future<void> initialize() async {
+    initializeCalls++;
+    initialized = true;
+  }
 
   @override
   void setErrorHandler(ValueChanged<String> handler) {

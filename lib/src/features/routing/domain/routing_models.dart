@@ -95,8 +95,21 @@ class RouteStep {
   final List<LatLng> points;
   final int? exitNumber;
 
+  String get normalizedType => type.trim().toLowerCase().replaceAll('_', ' ');
+
+  bool get isRoundabout => switch (normalizedType) {
+    'roundabout' || 'rotary' || 'roundabout turn' => true,
+    _ => false,
+  };
+
+  String? get roundaboutExitInstruction {
+    final exit = exitNumber;
+    if (!isRoundabout || exit == null) return null;
+    final road = roadName.isEmpty ? '' : ' sur $roadName';
+    return 'Prenez maintenant la ${exit == 1 ? '1re' : '${exit}e'} sortie$road';
+  }
+
   String get instruction {
-    final normalizedType = type.replaceAll('_', ' ');
     final direction = switch (modifier) {
       'left' => 'à gauche',
       'right' => 'à droite',
@@ -113,9 +126,10 @@ class RouteStep {
         ? 'Continuez tout droit$road'
         : 'Tournez $direction$road';
     final exit = exitNumber;
-    final roundaboutExit = exit == null
-        ? ''
-        : ', prenez la ${exit == 1 ? '1re' : '${exit}e'} sortie';
+    final roundaboutInstruction = exit == null
+        ? 'Entrez dans le rond-point${roadName.isEmpty ? '' : road}'
+        : 'Au rond-point, prenez la ${exit == 1 ? '1re' : '${exit}e'} sortie'
+              '${roadName.isEmpty ? '' : road}';
 
     return switch (normalizedType) {
       'depart' =>
@@ -153,11 +167,7 @@ class RouteStep {
         modifier == 'uturn'
             ? 'Au bout de la route, faites demi-tour$road'
             : 'Au bout de la route, tournez $direction$road',
-      'roundabout' || 'rotary' =>
-        exit == null
-            ? 'Entrez dans le rond-point${roadName.isEmpty ? '' : road}'
-            : 'Au rond-point$roundaboutExit${roadName.isEmpty ? '' : road}',
-      'roundabout turn' => 'Au rond-point, ${_lowercase(directedTurn)}',
+      'roundabout' || 'rotary' || 'roundabout turn' => roundaboutInstruction,
       'exit roundabout' || 'exit rotary' =>
         roadName.isEmpty ? 'Sortez du rond-point' : 'Sortez du rond-point$road',
       'new name' =>
@@ -202,9 +212,6 @@ class RouteStep {
     );
   }
 }
-
-String _lowercase(String value) =>
-    value.isEmpty ? value : '${value[0].toLowerCase()}${value.substring(1)}';
 
 class RoutePlan {
   const RoutePlan({

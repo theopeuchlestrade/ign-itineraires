@@ -42,6 +42,33 @@ void main() {
     );
   });
 
+  test('uses maneuver-specific navigation icons', () {
+    const roundabout = RouteStep(
+      type: 'roundabout',
+      modifier: 'right',
+      roadName: '',
+      distanceMeters: 20,
+      points: [],
+      exitNumber: 2,
+    );
+    const slightLeft = RouteStep(
+      type: 'turn',
+      modifier: 'slight left',
+      roadName: '',
+      distanceMeters: 20,
+      points: [],
+    );
+
+    expect(
+      navigationInstructionIcon(roundabout),
+      Icons.roundabout_right_rounded,
+    );
+    expect(
+      navigationInstructionIcon(slightLeft),
+      Icons.turn_slight_left_rounded,
+    );
+  });
+
   testWidgets('renders the live map before MapController is ready', (
     tester,
   ) async {

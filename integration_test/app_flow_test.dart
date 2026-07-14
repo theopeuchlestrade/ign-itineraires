@@ -113,6 +113,7 @@ void main() {
     await tester.tap(find.text('Démarrer le guidage'));
     await _pumpUi(tester);
     expect(find.text('Guidage à pied'), findsOneWidget);
+    expect(harness.speech.initializeCalls, kIsWeb ? 1 : 0);
     expect(harness.wakeLock.enabled, isTrue);
     expect(harness.speech.messages, isNotEmpty);
 

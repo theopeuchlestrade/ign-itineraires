@@ -52,13 +52,18 @@ class NavigationEngine {
     if (_route.steps.isNotEmpty) {
       currentStep = _track.stepEndDistances.indexWhere((end) => progress < end);
       if (currentStep == -1) currentStep = _route.steps.length - 1;
-      upcomingStep = math.min(currentStep + 1, _route.steps.length - 1);
+      final current = _route.steps[currentStep];
+      upcomingStep = current.isRoundabout && current.exitNumber != null
+          ? currentStep
+          : math.min(currentStep + 1, _route.steps.length - 1);
       distanceToManeuver = currentStep < _track.stepEndDistances.length
           ? math
                 .max(0, _track.stepEndDistances[currentStep] - progress)
                 .toDouble()
           : remaining;
-      if (upcomingStep == currentStep) distanceToManeuver = remaining;
+      if (upcomingStep == currentStep && !current.isRoundabout) {
+        distanceToManeuver = remaining;
+      }
     }
 
     final arrivalThreshold = _mode == TravelMode.pedestrian ? 20.0 : 30.0;
@@ -97,8 +102,80 @@ class NavigationEngine {
   }
 }
 
+class NavigationHeadingTracker {
+  NavigationHeadingTracker(this._mode);
+
+  final TravelMode _mode;
+  NavigationPosition? _anchor;
+  double? _lastHeadingDegrees;
+
+  void reset() {
+    _anchor = null;
+    _lastHeadingDegrees = null;
+  }
+
+  double resolve(
+    NavigationPosition position, {
+    required double routeHeadingDegrees,
+  }) {
+    final movementHeading = _movementHeading(position);
+    final previousHeading = _lastHeadingDegrees;
+    final candidate =
+        movementHeading ??
+        _reliablePlatformHeading(position, previousHeading) ??
+        previousHeading ??
+        routeHeadingDegrees;
+    final normalized = _normalizeHeading(candidate);
+    _lastHeadingDegrees = normalized;
+    return normalized;
+  }
+
+  double? _movementHeading(NavigationPosition position) {
+    final anchor = _anchor;
+    if (anchor == null) {
+      _anchor = position;
+      return null;
+    }
+    final elapsed = position.timestamp.difference(anchor.timestamp);
+    if (elapsed <= Duration.zero || elapsed > const Duration(seconds: 15)) {
+      _anchor = position;
+      return null;
+    }
+    final distance = const Distance().as(
+      LengthUnit.Meter,
+      anchor.point,
+      position.point,
+    );
+    final worstAccuracy = math.max(
+      anchor.accuracyMeters,
+      position.accuracyMeters,
+    );
+    final baseDistance = _mode == TravelMode.car ? 8.0 : 4.0;
+    final minimumDistance = math.max(
+      baseDistance,
+      math.min(20, worstAccuracy * 0.75),
+    );
+    if (distance < minimumDistance) return null;
+    _anchor = position;
+    return _bearingBetween(anchor.point, position.point);
+  }
+
+  double? _reliablePlatformHeading(
+    NavigationPosition position,
+    double? previousHeading,
+  ) {
+    if (!position.hasReliableHeading) return null;
+    if (previousHeading == null ||
+        _angleDifference(position.headingDegrees, previousHeading) <= 60) {
+      return position.headingDegrees;
+    }
+    return null;
+  }
+}
+
 class GuidanceAnnouncementPlanner {
   final Map<int, Set<int>> _announcedThresholds = {};
+  final Set<int> _announcedRoundaboutExits = {};
   bool _initialAnnounced = false;
   bool _arrivalAnnounced = false;
 
@@ -133,6 +210,16 @@ class GuidanceAnnouncementPlanner {
     final distance = update.distanceToManeuverMeters;
     final near = thresholds.last;
     final far = thresholds.first;
+    final roundaboutExit = step.roundaboutExitInstruction;
+
+    if (roundaboutExit != null && update.currentStepIndex == stepIndex) {
+      final exitThreshold = mode == TravelMode.car ? 80 : 25;
+      if (distance <= exitThreshold &&
+          _announcedRoundaboutExits.add(stepIndex)) {
+        return roundaboutExit;
+      }
+      return null;
+    }
 
     if (distance <= near && !announced.contains(near)) {
       announced.addAll(thresholds);
@@ -171,6 +258,7 @@ class GuidanceAnnouncementPlanner {
 
   void reset() {
     _announcedThresholds.clear();
+    _announcedRoundaboutExits.clear();
     _initialAnnounced = false;
     _arrivalAnnounced = false;
   }
@@ -362,6 +450,15 @@ double _bearingDegrees(double east, double north) {
   final value = math.atan2(east, north) * 180 / math.pi;
   return (value + 360) % 360;
 }
+
+double _bearingBetween(LatLng start, LatLng end) {
+  final averageLatitude = (start.latitude + end.latitude) * math.pi / 360;
+  final east = (end.longitude - start.longitude) * math.cos(averageLatitude);
+  final north = end.latitude - start.latitude;
+  return _bearingDegrees(east, north);
+}
+
+double _normalizeHeading(double heading) => (heading % 360 + 360) % 360;
 
 double _angleDifference(double first, double second) {
   final difference = (first - second).abs() % 360;

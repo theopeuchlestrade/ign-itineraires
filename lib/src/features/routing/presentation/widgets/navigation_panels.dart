@@ -21,7 +21,7 @@ class _InstructionBanner extends StatelessWidget {
                 borderRadius: BorderRadius.circular(17),
               ),
               child: Icon(
-                _instructionIcon(step),
+                navigationInstructionIcon(step),
                 color: Colors.white,
                 size: 30,
               ),
@@ -48,17 +48,6 @@ class _InstructionBanner extends StatelessWidget {
         ),
       ),
     );
-  }
-
-  IconData _instructionIcon(RouteStep? step) {
-    if (step == null) return Icons.navigation_rounded;
-    if (step.type == 'arrive') return Icons.flag_rounded;
-    return switch (step.modifier) {
-      'left' || 'slight left' || 'sharp left' => Icons.turn_left_rounded,
-      'right' || 'slight right' || 'sharp right' => Icons.turn_right_rounded,
-      'uturn' => Icons.u_turn_left_rounded,
-      _ => Icons.straight_rounded,
-    };
   }
 }
 
