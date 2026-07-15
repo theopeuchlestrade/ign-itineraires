@@ -1,0 +1,20 @@
+[extend]
+useDefault = true
+
+[[allowlists]]
+description = "CocoaPods spec checksums in Podfile.lock are not secrets"
+paths = ['''ios/Podfile\.lock''']
+regexes = [
+  '''AppAuth: [a-f0-9]{40}''',
+  '''GTMAppAuth: [a-f0-9]{40}''',
+]
+
+[[allowlists]]
+description = "SharedPreferences storage identifiers are local keys, not API credentials"
+paths = ['''lib/src/features/routing/data/local_route_store\.dart''']
+regexes = [
+  '''favorite_places_v1''',
+  '''recent_routes_v1''',
+  '''route_history_enabled_v1''',
+  '''navigation_voice_enabled_v1''',
+]

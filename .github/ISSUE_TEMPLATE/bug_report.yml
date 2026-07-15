@@ -1,0 +1,80 @@
+name: Bug report
+description: Report a reproducible IGN Itinéraires problem.
+title: "Bug: "
+labels:
+  - bug
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for reporting a bug. For security issues, use the private security policy instead of a public issue. Never include a private address, route, or precise location.
+  - type: dropdown
+    id: platform
+    attributes:
+      label: Platform
+      options:
+        - Web
+        - Android
+        - iOS
+        - Multiple platforms
+    validations:
+      required: true
+  - type: dropdown
+    id: area
+    attributes:
+      label: Area
+      options:
+        - Address search
+        - Route calculation
+        - Map display
+        - GPS and permissions
+        - Built-in guidance
+        - Voice instructions
+        - Favorites and history
+        - External navigation
+        - UI and accessibility
+        - Build and CI
+        - Other
+    validations:
+      required: true
+  - type: textarea
+    id: current
+    attributes:
+      label: What happened?
+      description: Describe the current behavior. Replace private locations with public landmarks or synthetic coordinates.
+    validations:
+      required: true
+  - type: textarea
+    id: expected
+    attributes:
+      label: Expected behavior
+      description: Describe what should have happened instead.
+    validations:
+      required: true
+  - type: textarea
+    id: reproduce
+    attributes:
+      label: Reproduction steps
+      placeholder: |
+        1. Open ...
+        2. Choose a public test location ...
+        3. Observe ...
+    validations:
+      required: true
+  - type: input
+    id: version
+    attributes:
+      label: Version or commit
+      description: Provide the application version, deployment version, or commit SHA.
+  - type: textarea
+    id: context
+    attributes:
+      label: Additional context
+      description: Add device, browser, OS, sanitized logs, or screenshots if useful.
+  - type: checkboxes
+    id: privacy
+    attributes:
+      label: Privacy check
+      options:
+        - label: I removed private addresses, precise personal locations, route history, and other sensitive data.
+          required: true

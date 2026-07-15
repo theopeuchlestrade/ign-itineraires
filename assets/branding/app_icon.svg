@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1024 1024" width="1024" height="1024">
+  <!-- IGN Itinéraires background -->
+  <circle cx="512" cy="512" r="512" fill="#255F85"/>
+  
+  <!-- Route/Map symbol - cross representing cardinal directions and routes -->
+  <path d="M300 300 L724 724 M724 300 L300 724" 
+        stroke="white" stroke-width="120" stroke-linecap="round" fill="none"/>
+  
+  <!-- Center pin/location marker -->
+  <circle cx="512" cy="512" r="180" fill="white"/>
+  <circle cx="512" cy="512" r="120" fill="#B24C63"/>
+</svg>
