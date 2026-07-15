@@ -266,10 +266,14 @@ Future<void> _selectAddress(
     (widget) =>
         widget is TextField && widget.decoration?.labelText == fieldLabel,
   );
+  final plannerScroll = find.descendant(
+    of: find.byType(ListView).first,
+    matching: find.byType(Scrollable),
+  );
   await tester.scrollUntilVisible(
     field,
     120,
-    scrollable: find.byType(ListView).first,
+    scrollable: plannerScroll,
   );
   await tester.enterText(field, query);
   final suggestion = find.widgetWithText(ListTile, expectedLabel);
