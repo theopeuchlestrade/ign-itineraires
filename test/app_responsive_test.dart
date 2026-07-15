@@ -167,7 +167,85 @@ void main() {
     expect(destinationFocused, isTrue);
     await tester.pump(const Duration(milliseconds: 200));
   });
+
+  testWidgets('addresses remain selectable on a small screen with keyboard', (
+    tester,
+  ) async {
+    final harness = TestAppHarness();
+    await tester.binding.setSurfaceSize(const Size(360, 640));
+    addTearDown(() async {
+      tester.view.resetViewInsets();
+      await tester.binding.setSurfaceSize(null);
+      await harness.dispose();
+    });
+    await tester.pumpWidget(
+      IgnItinerairesApp(dependencies: harness.dependencies),
+    );
+    await tester.pumpAndSettle();
+
+    await _selectAddressWithKeyboard(
+      tester,
+      fieldLabel: 'Départ',
+      query: 'Hôtel',
+      expectedLabel: parisStart.label,
+    );
+    await _selectAddressWithKeyboard(
+      tester,
+      fieldLabel: 'Arrivée',
+      query: 'Bastille',
+      expectedLabel: parisDestination.label,
+    );
+
+    final plannerScroll = _plannerScroll();
+    final calculateButton = find.widgetWithText(
+      FilledButton,
+      'Calculer l’itinéraire',
+    );
+    await tester.scrollUntilVisible(
+      calculateButton,
+      120,
+      scrollable: plannerScroll,
+    );
+    expect(tester.widget<FilledButton>(calculateButton).onPressed, isNotNull);
+  });
 }
+
+Finder _addressField(String label) => find.byWidgetPredicate(
+  (widget) => widget is TextField && widget.decoration?.labelText == label,
+);
+
+Future<void> _selectAddressWithKeyboard(
+  WidgetTester tester, {
+  required String fieldLabel,
+  required String query,
+  required String expectedLabel,
+}) async {
+  final plannerScroll = _plannerScroll();
+  final field = _addressField(fieldLabel);
+  await tester.scrollUntilVisible(field, 120, scrollable: plannerScroll);
+
+  tester.view.viewInsets = const FakeViewPadding(bottom: 280);
+  await tester.pump();
+  await tester.enterText(field, query);
+  await tester.pump(const Duration(milliseconds: 350));
+  await tester.pump();
+
+  final suggestion = find.widgetWithText(ListTile, expectedLabel);
+  expect(suggestion, findsOneWidget);
+
+  tester.view.viewInsets = FakeViewPadding.zero;
+  await tester.pumpAndSettle();
+  await tester.ensureVisible(suggestion);
+  await tester.tap(suggestion);
+  await tester.pumpAndSettle();
+}
+
+Finder _plannerScroll() => find
+    .descendant(
+      of: find.byType(ListView).first,
+      matching: find.byType(Scrollable),
+    )
+    .first;
 
 class _GoldenCase {
   const _GoldenCase({
