@@ -28,13 +28,13 @@ void main() {
 
     await _selectAddress(
       tester,
-      fieldIndex: 0,
+      fieldLabel: 'Départ',
       query: 'Hôtel',
       expectedLabel: parisStart.label,
     );
     await _selectAddress(
       tester,
-      fieldIndex: 1,
+      fieldLabel: 'Arrivée',
       query: 'Bastille',
       expectedLabel: parisDestination.label,
     );
@@ -93,13 +93,13 @@ void main() {
 
     await _selectAddress(
       tester,
-      fieldIndex: 0,
+      fieldLabel: 'Départ',
       query: 'Hôtel',
       expectedLabel: parisStart.label,
     );
     await _selectAddress(
       tester,
-      fieldIndex: 1,
+      fieldLabel: 'Arrivée',
       query: 'Bastille',
       expectedLabel: parisDestination.label,
     );
@@ -193,13 +193,13 @@ void main() {
 
     await _selectAddress(
       tester,
-      fieldIndex: 0,
+      fieldLabel: 'Départ',
       query: 'Hôtel',
       expectedLabel: parisStart.label,
     );
     await _selectAddress(
       tester,
-      fieldIndex: 1,
+      fieldLabel: 'Arrivée',
       query: 'Bastille',
       expectedLabel: parisDestination.label,
     );
@@ -230,13 +230,13 @@ void main() {
 
     await _selectAddress(
       tester,
-      fieldIndex: 0,
+      fieldLabel: 'Départ',
       query: 'Hôtel',
       expectedLabel: parisStart.label,
     );
     await _selectAddress(
       tester,
-      fieldIndex: 1,
+      fieldLabel: 'Arrivée',
       query: 'Bastille',
       expectedLabel: parisDestination.label,
     );
@@ -258,11 +258,20 @@ void main() {
 
 Future<void> _selectAddress(
   WidgetTester tester, {
-  required int fieldIndex,
+  required String fieldLabel,
   required String query,
   required String expectedLabel,
 }) async {
-  await tester.enterText(find.byType(TextField).at(fieldIndex), query);
+  final field = find.byWidgetPredicate(
+    (widget) =>
+        widget is TextField && widget.decoration?.labelText == fieldLabel,
+  );
+  await tester.scrollUntilVisible(
+    field,
+    120,
+    scrollable: find.byType(ListView).first,
+  );
+  await tester.enterText(field, query);
   final suggestion = find.widgetWithText(ListTile, expectedLabel);
   for (
     var attempt = 0;
