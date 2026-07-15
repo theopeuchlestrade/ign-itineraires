@@ -269,6 +269,7 @@ jobs:
       - linux-goldens
       - web-integration
       - android-build
+      - android-api-24
       - ios-build
       - container
     steps:
@@ -282,6 +283,7 @@ jobs:
              [ "${{ needs.linux-goldens.result }}" != "success" ] ||
              [ "${{ needs.web-integration.result }}" != "success" ] ||
              [ "${{ needs.android-build.result }}" != "success" ] ||
+             [ "${{ needs.android-api-24.result }}" != "success" ] ||
              [ "${{ needs.ios-build.result }}" != "success" ] ||
              [ "${{ needs.container.result }}" != "success" ]; then
             echo "::error::One or more required CI jobs failed"
@@ -305,7 +307,7 @@ jobs:
 
   android-api-24:
     name: Android integration on API 24
-    if: github.event_name == 'schedule' || github.event_name == 'workflow_dispatch'
+    if: github.event_name == 'pull_request' || github.event_name == 'schedule' || github.event_name == 'workflow_dispatch'
     runs-on: ubuntu-latest
     timeout-minutes: 45
     steps:

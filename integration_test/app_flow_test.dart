@@ -1,5 +1,6 @@
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_map/flutter_map.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:integration_test/integration_test.dart';
@@ -262,7 +263,7 @@ Future<void> _selectAddress(
   required String expectedLabel,
 }) async {
   await tester.enterText(find.byType(TextField).at(fieldIndex), query);
-  final suggestion = find.text(expectedLabel);
+  final suggestion = find.widgetWithText(ListTile, expectedLabel);
   for (
     var attempt = 0;
     attempt < 10 && suggestion.evaluate().isEmpty;
@@ -271,6 +272,13 @@ Future<void> _selectAddress(
     await tester.pump(const Duration(milliseconds: 100));
   }
   expect(suggestion, findsWidgets);
+
+  if (!kIsWeb && defaultTargetPlatform == TargetPlatform.android) {
+    await SystemChannels.textInput.invokeMethod<void>('TextInput.hide');
+    await tester.pump(const Duration(milliseconds: 300));
+  }
+  await tester.ensureVisible(suggestion.last);
+  await tester.pump();
   await tester.tap(suggestion.last);
   await _pumpUi(tester);
 }
