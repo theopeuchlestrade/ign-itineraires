@@ -270,11 +270,7 @@ Future<void> _selectAddress(
     of: find.byType(ListView).first,
     matching: find.byType(Scrollable),
   );
-  await tester.scrollUntilVisible(
-    field,
-    120,
-    scrollable: plannerScroll,
-  );
+  await tester.scrollUntilVisible(field, 120, scrollable: plannerScroll);
   await tester.enterText(field, query);
   final suggestion = find.widgetWithText(ListTile, expectedLabel);
   for (
