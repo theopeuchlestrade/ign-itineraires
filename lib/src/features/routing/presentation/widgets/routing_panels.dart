@@ -49,7 +49,22 @@ class _PlannerPanel extends StatelessWidget {
             locating: controller.locating,
             onUseCurrentLocation: controller.useCurrentLocation,
           ),
-          const SizedBox(height: 14),
+          Semantics(
+            button: true,
+            label: 'Inverser le départ et l’arrivée',
+            excludeSemantics: true,
+            child: Align(
+              alignment: Alignment.centerRight,
+              child: IconButton(
+                tooltip: 'Inverser le départ et l’arrivée',
+                onPressed:
+                    controller.start == null && controller.destination == null
+                    ? null
+                    : controller.swapEndpoints,
+                icon: const Icon(Icons.swap_vert_rounded),
+              ),
+            ),
+          ),
           AddressSearchField(
             label: 'Arrivée',
             icon: Icons.flag_outlined,
@@ -89,9 +104,16 @@ class _PlannerPanel extends StatelessWidget {
             _InlineMessage(
               message: controller.message!,
               error: controller.messageIsError,
-              action: controller.locationRecovery == null
-                  ? null
-                  : controller.recoverLocation,
+              actionLabel: controller.locationRecovery != null
+                  ? 'Ouvrir les réglages'
+                  : controller.routeRetryAvailable
+                  ? controller.routeRetryLabel
+                  : null,
+              action: controller.locationRecovery != null
+                  ? controller.recoverLocation
+                  : controller.canRetryRoute
+                  ? controller.calculate
+                  : null,
             ),
           ],
           if (controller.route != null) ...[
@@ -254,11 +276,13 @@ class _InlineMessage extends StatelessWidget {
   const _InlineMessage({
     required this.message,
     required this.error,
+    this.actionLabel,
     this.action,
   });
 
   final String message;
   final bool error;
+  final String? actionLabel;
   final VoidCallback? action;
 
   @override
@@ -290,11 +314,8 @@ class _InlineMessage extends StatelessWidget {
                     liveRegion: true,
                     child: Text(message, style: TextStyle(color: onColor)),
                   ),
-                  if (action != null)
-                    TextButton(
-                      onPressed: action,
-                      child: const Text('Ouvrir les réglages'),
-                    ),
+                  if (actionLabel != null)
+                    TextButton(onPressed: action, child: Text(actionLabel!)),
                 ],
               ),
             ),

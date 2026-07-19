@@ -52,11 +52,13 @@ void main() {
       'favorite_places_v1': [
         jsonEncode(favorite.toJson()),
         jsonEncode({'label': 'Broken', 'latitude': 'north', 'longitude': 2}),
+        jsonEncode({'label': 'Out of range', 'latitude': 999, 'longitude': 2}),
         '{not-json',
       ],
       'recent_routes_v1': [
         jsonEncode(recent.toJson()),
         jsonEncode({...recent.toJson(), 'mode': 'spaceship'}),
+        jsonEncode({...recent.toJson(), 'distanceMeters': -1}),
         '[]',
       ],
     });

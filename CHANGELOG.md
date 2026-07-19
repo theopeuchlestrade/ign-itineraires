@@ -32,12 +32,22 @@ initial baseline represented by the repository's root commit.
   for public contributions.
 - Added issue and pull request templates, dependency automation, secret
   scanning, workflow linting, and local contributor tooling.
+- Added departure/destination inversion and keyboard navigation for address
+  suggestions.
+- Added actionable route retries with rate-limit countdowns, navigation-start
+  retry, and an explicit degraded state when map tiles repeatedly fail.
+- Added deterministic synthetic GPS trace replay scenarios for jitter,
+  parallel-road offsets, backward fixes, and implausible jumps.
 
 ### Implementation
 
 - Uses a Manrope-based Material 3 identity with bundled font assets.
 - Integrates iOS plugins through Swift Package Manager and implements speech
   with first-party Web, Android, and iOS adapters.
+- Classifies Géoplateforme failures so presentation code can distinguish
+  retryable outages, rate limits, invalid responses, and missing routes.
+- Removed duplicate pull-request dependency workflows while retaining the
+  blocking CI checks and scheduled vulnerability scan.
 
 ### Security
 
@@ -47,3 +57,6 @@ initial baseline represented by the repository's root commit.
   services after pause, stop, backgrounding, or disposal.
 - Added dependency vulnerability scanning and documented data flows,
   permissions, and network access.
+- Rejects malformed or out-of-range locally stored places and route metrics.
+- Replaced public-issue instructions for hosting-data requests with GitHub's
+  private privacy channels.

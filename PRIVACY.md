@@ -60,15 +60,17 @@ according to their privacy policy.
 policy. For GitHub Pages, see:
 https://docs.github.com/en/site-policy/privacy-policies/github-privacy-statement
 
-**Public privacy contact:** For data rights inquiries, open an issue at
-https://github.com/theopeuchlestrade/ign-itineraires/issues
+**Private requests concerning GitHub hosting data:** Do not publish a data-rights
+request, IP address, home address, or route in a repository issue. The maintainer
+cannot access or erase GitHub Pages access logs. Requests concerning personal
+data processed by GitHub must be sent to `privacy@github.com`; privacy feedback
+or concerns may be sent to its Data Protection Officer at `dpo@github.com`, as
+documented in the GitHub General Privacy Statement linked above.
 
-**Procedures for exercising data rights:** Users may request access, rectification,
-or erasure of their personal data by opening an issue on the public repository.
-The editor commits to respond within one month. Since the application processes
-no personal data on the server side (all route data remains on device), most
-requests will concern hosting provider logs, which are managed according to
-the hosting provider's own procedures.
+Public repository issues may be used only for non-sensitive questions about the
+application's documented behavior. IGN Itinéraires has no account database or
+server-side copy of searches, routes, favorites, or GPS fixes on which the
+maintainer could perform an access, rectification, or erasure operation.
 
 ## Fonts and Resources
 

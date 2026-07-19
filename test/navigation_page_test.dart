@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:ign_itineraires/src/features/routing/data/geoplateforme_api.dart';
 import 'package:ign_itineraires/src/features/routing/domain/navigation_models.dart';
 import 'package:ign_itineraires/src/features/routing/domain/routing_models.dart';
 import 'package:ign_itineraires/src/features/routing/presentation/navigation_page.dart';
@@ -170,6 +171,41 @@ void main() {
 
     expect(harness.speech.messages, hasLength(beforeRetry + 1));
     await harness.dispose();
+  });
+
+  testWidgets('retries navigation after a route service failure', (
+    tester,
+  ) async {
+    final harness = TestAppHarness()
+      ..api.routeError = const GeoplateformeException(
+        'Connexion impossible',
+        kind: GeoplateformeFailureKind.offline,
+      );
+    addTearDown(harness.dispose);
+
+    await tester.pumpWidget(
+      MaterialApp(
+        home: NavigationPage(
+          destination: parisDestination,
+          mode: TravelMode.car,
+          dependencies: harness.dependencies,
+        ),
+      ),
+    );
+    await tester.pump();
+    await tester.pump();
+
+    expect(find.text('Guidage indisponible'), findsOneWidget);
+    expect(find.text('Réessayer'), findsOneWidget);
+
+    harness.api.routeError = null;
+    await tester.tap(find.text('Réessayer'));
+    await tester.pump();
+    await tester.pump();
+
+    expect(find.text('Guidage indisponible'), findsNothing);
+    expect(find.text('500 m'), findsOneWidget);
+    expect(harness.api.routeCalls, 2);
   });
 
   testWidgets('keeps guidance at the top and trip metrics at the bottom', (

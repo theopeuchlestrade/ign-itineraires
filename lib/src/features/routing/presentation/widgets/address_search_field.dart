@@ -1,6 +1,7 @@
 import 'dart:async';
 
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:ign_itineraires/src/features/routing/domain/routing_models.dart';
 
 class AddressSearchField extends StatefulWidget {
@@ -31,11 +32,13 @@ class _AddressSearchFieldState extends State<AddressSearchField> {
   late final TextEditingController _controller;
   late final FocusNode _focusNode;
   Timer? _debounce;
+  Timer? _focusDismiss;
   List<Place> _suggestions = const [];
   bool _loading = false;
   String? _statusMessage;
   bool _programmaticChange = false;
   int _searchGeneration = 0;
+  int _highlightedSuggestion = -1;
 
   @override
   void initState() {
@@ -58,6 +61,7 @@ class _AddressSearchFieldState extends State<AddressSearchField> {
       );
       _programmaticChange = false;
       _suggestions = const [];
+      _highlightedSuggestion = -1;
       _loading = false;
       _statusMessage = null;
     }
@@ -66,6 +70,7 @@ class _AddressSearchFieldState extends State<AddressSearchField> {
   @override
   void dispose() {
     _debounce?.cancel();
+    _focusDismiss?.cancel();
     _controller.dispose();
     _focusNode
       ..removeListener(_onFocusChanged)
@@ -74,11 +79,13 @@ class _AddressSearchFieldState extends State<AddressSearchField> {
   }
 
   void _onFocusChanged() {
+    _focusDismiss?.cancel();
     if (!_focusNode.hasFocus && mounted) {
-      Future<void>.delayed(const Duration(milliseconds: 180), () {
+      _focusDismiss = Timer(const Duration(milliseconds: 180), () {
         if (mounted && !_focusNode.hasFocus) {
           setState(() {
             _suggestions = const [];
+            _highlightedSuggestion = -1;
             _statusMessage = null;
           });
         }
@@ -97,6 +104,7 @@ class _AddressSearchFieldState extends State<AddressSearchField> {
       setState(() {
         _loading = false;
         _suggestions = const [];
+        _highlightedSuggestion = -1;
         _statusMessage = null;
       });
       return;
@@ -112,12 +120,14 @@ class _AddressSearchFieldState extends State<AddressSearchField> {
         if (!mounted || generation != _searchGeneration) return;
         setState(() {
           _suggestions = results;
+          _highlightedSuggestion = -1;
           _statusMessage = results.isEmpty ? 'Aucun résultat.' : null;
         });
       } catch (_) {
         if (!mounted || generation != _searchGeneration) return;
         setState(() {
           _suggestions = const [];
+          _highlightedSuggestion = -1;
           _statusMessage = 'Recherche indisponible. Réessayez.';
         });
       } finally {
@@ -139,6 +149,7 @@ class _AddressSearchFieldState extends State<AddressSearchField> {
     _programmaticChange = false;
     setState(() {
       _suggestions = const [];
+      _highlightedSuggestion = -1;
       _loading = false;
       _statusMessage = null;
     });
@@ -146,44 +157,92 @@ class _AddressSearchFieldState extends State<AddressSearchField> {
     _focusNode.unfocus();
   }
 
+  KeyEventResult _onKeyEvent(FocusNode _, KeyEvent event) {
+    if (event is! KeyDownEvent || _suggestions.isEmpty) {
+      return KeyEventResult.ignored;
+    }
+    if (event.logicalKey == LogicalKeyboardKey.arrowDown) {
+      setState(() {
+        _highlightedSuggestion = (_highlightedSuggestion + 1).clamp(
+          0,
+          _suggestions.length - 1,
+        );
+      });
+      return KeyEventResult.handled;
+    }
+    if (event.logicalKey == LogicalKeyboardKey.arrowUp) {
+      setState(() {
+        _highlightedSuggestion = _highlightedSuggestion <= 0
+            ? _suggestions.length - 1
+            : _highlightedSuggestion - 1;
+      });
+      return KeyEventResult.handled;
+    }
+    if (event.logicalKey == LogicalKeyboardKey.enter &&
+        _highlightedSuggestion >= 0) {
+      _select(_suggestions[_highlightedSuggestion]);
+      return KeyEventResult.handled;
+    }
+    if (event.logicalKey == LogicalKeyboardKey.escape) {
+      setState(() {
+        _suggestions = const [];
+        _highlightedSuggestion = -1;
+      });
+      return KeyEventResult.handled;
+    }
+    return KeyEventResult.ignored;
+  }
+
   @override
   Widget build(BuildContext context) {
     return Column(
       mainAxisSize: MainAxisSize.min,
       children: [
-        TextField(
-          controller: _controller,
-          focusNode: _focusNode,
-          onChanged: _onTextChanged,
-          textInputAction: TextInputAction.search,
-          decoration: InputDecoration(
-            labelText: widget.label,
-            prefixIcon: Icon(widget.icon),
-            suffixIcon: Row(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                if (_loading)
-                  const Padding(
-                    padding: EdgeInsets.all(14),
-                    child: SizedBox.square(
-                      dimension: 18,
-                      child: CircularProgressIndicator(strokeWidth: 2),
+        Focus(
+          canRequestFocus: false,
+          skipTraversal: true,
+          onKeyEvent: _onKeyEvent,
+          child: TextField(
+            controller: _controller,
+            focusNode: _focusNode,
+            onChanged: _onTextChanged,
+            onSubmitted: (_) {
+              if (_suggestions.isEmpty) return;
+              final index = _highlightedSuggestion < 0
+                  ? 0
+                  : _highlightedSuggestion;
+              _select(_suggestions[index]);
+            },
+            textInputAction: TextInputAction.search,
+            decoration: InputDecoration(
+              labelText: widget.label,
+              prefixIcon: Icon(widget.icon),
+              suffixIcon: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  if (_loading)
+                    const Padding(
+                      padding: EdgeInsets.all(14),
+                      child: SizedBox.square(
+                        dimension: 18,
+                        child: CircularProgressIndicator(strokeWidth: 2),
+                      ),
                     ),
-                  ),
-                if (widget.onUseCurrentLocation != null)
-                  IconButton(
-                    tooltip: 'Utiliser ma position',
-                    onPressed: widget.locating
-                        ? null
-                        : widget.onUseCurrentLocation,
-                    icon: widget.locating
-                        ? const SizedBox.square(
-                            dimension: 20,
-                            child: CircularProgressIndicator(strokeWidth: 2),
-                          )
-                        : const Icon(Icons.my_location),
-                  ),
-              ],
+                  if (widget.onUseCurrentLocation != null)
+                    IconButton(
+                      tooltip: 'Utiliser ma position',
+                      onPressed: widget.locating
+                          ? null
+                          : widget.onUseCurrentLocation,
+                      icon: widget.locating
+                          ? const SizedBox.square(
+                              dimension: 20,
+                              child: CircularProgressIndicator(strokeWidth: 2),
+                            )
+                          : const Icon(Icons.my_location),
+                    ),
+                ],
+              ),
             ),
           ),
         ),
@@ -208,6 +267,10 @@ class _AddressSearchFieldState extends State<AddressSearchField> {
                     final place = _suggestions[index];
                     return ListTile(
                       dense: true,
+                      selected: index == _highlightedSuggestion,
+                      selectedTileColor: Theme.of(
+                        context,
+                      ).colorScheme.secondaryContainer,
                       leading: const Icon(Icons.place_outlined),
                       title: Text(place.label),
                       onTap: () => _select(place),

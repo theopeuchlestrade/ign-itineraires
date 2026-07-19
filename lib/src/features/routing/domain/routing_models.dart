@@ -49,11 +49,17 @@ class Place {
     'longitude': longitude,
   };
 
-  factory Place.fromJson(Map<String, dynamic> json) => Place(
-    label: json['label'] as String,
-    latitude: (json['latitude'] as num).toDouble(),
-    longitude: (json['longitude'] as num).toDouble(),
-  );
+  factory Place.fromJson(Map<String, dynamic> json) {
+    final label = json['label'];
+    final latitude = (json['latitude'] as num?)?.toDouble();
+    final longitude = (json['longitude'] as num?)?.toDouble();
+    if (label is! String ||
+        label.trim().isEmpty ||
+        !_validCoordinate(latitude, longitude)) {
+      throw const FormatException('Invalid stored place');
+    }
+    return Place(label: label, latitude: latitude!, longitude: longitude!);
+  }
 
   factory Place.fromCompletionJson(Map<String, dynamic> json) {
     final label = json['fulltext'];
@@ -200,15 +206,7 @@ class RouteStep {
         final num value when value.toInt() > 0 => value.toInt(),
         _ => null,
       },
-      points: coordinates
-          .map((coordinate) {
-            final pair = coordinate as List<dynamic>;
-            return LatLng(
-              (pair[1] as num).toDouble(),
-              (pair[0] as num).toDouble(),
-            );
-          })
-          .toList(growable: false),
+      points: coordinates.map(_coordinateFromJson).toList(growable: false),
     );
   }
 }
@@ -306,14 +304,26 @@ class RecentRoute {
     'createdAt': createdAt.toIso8601String(),
   };
 
-  factory RecentRoute.fromJson(Map<String, dynamic> json) => RecentRoute(
-    start: Place.fromJson(json['start'] as Map<String, dynamic>),
-    destination: Place.fromJson(json['destination'] as Map<String, dynamic>),
-    mode: TravelMode.values.byName(json['mode'] as String),
-    distanceMeters: (json['distanceMeters'] as num).toDouble(),
-    durationSeconds: (json['durationSeconds'] as num).toDouble(),
-    createdAt: DateTime.parse(json['createdAt'] as String),
-  );
+  factory RecentRoute.fromJson(Map<String, dynamic> json) {
+    final distance = (json['distanceMeters'] as num?)?.toDouble();
+    final duration = (json['durationSeconds'] as num?)?.toDouble();
+    if (distance == null ||
+        duration == null ||
+        !distance.isFinite ||
+        !duration.isFinite ||
+        distance < 0 ||
+        duration < 0) {
+      throw const FormatException('Invalid stored route metrics');
+    }
+    return RecentRoute(
+      start: Place.fromJson(json['start'] as Map<String, dynamic>),
+      destination: Place.fromJson(json['destination'] as Map<String, dynamic>),
+      mode: TravelMode.values.byName(json['mode'] as String),
+      distanceMeters: distance,
+      durationSeconds: duration,
+      createdAt: DateTime.parse(json['createdAt'] as String),
+    );
+  }
 
   String encode() => jsonEncode(toJson());
 }

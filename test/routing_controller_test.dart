@@ -97,6 +97,20 @@ void main() {
     expect(harness.store.recents, isEmpty);
   });
 
+  test('swaps endpoints and invalidates the calculated route', () async {
+    controller
+      ..setStart(parisStart)
+      ..setDestination(parisDestination);
+    await controller.calculate();
+
+    controller.swapEndpoints();
+
+    expect(controller.start, parisDestination);
+    expect(controller.destination, parisStart);
+    expect(controller.route, isNull);
+    expect(controller.calculating, isFalse);
+  });
+
   test('stores and erases recent routes only after opt-in', () async {
     controller
       ..setStart(parisStart)
@@ -235,6 +249,42 @@ void main() {
       expect(harness.store.recents, isEmpty);
     },
   );
+
+  test('exposes an immediate retry for a retryable route failure', () async {
+    harness.api.routeError = const GeoplateformeException(
+      'Connexion impossible',
+      kind: GeoplateformeFailureKind.offline,
+    );
+    controller
+      ..setStart(parisStart)
+      ..setDestination(parisDestination);
+
+    await controller.calculate();
+
+    expect(controller.routeRetryAvailable, isTrue);
+    expect(controller.canRetryRoute, isTrue);
+    expect(controller.routeRetryLabel, 'Réessayer');
+
+    harness.api.routeError = null;
+    await controller.calculate();
+    expect(controller.route, urbanRoute);
+    expect(controller.routeRetryAvailable, isFalse);
+  });
+
+  test('does not offer retry for a route that cannot be found', () async {
+    harness.api.routeError = const GeoplateformeException(
+      'Aucun itinéraire',
+      kind: GeoplateformeFailureKind.noRoute,
+    );
+    controller
+      ..setStart(parisStart)
+      ..setDestination(parisDestination);
+
+    await controller.calculate();
+
+    expect(controller.routeRetryAvailable, isFalse);
+    expect(controller.canRetryRoute, isFalse);
+  });
 
   test(
     'requires both endpoints and invalidates a route when mode changes',

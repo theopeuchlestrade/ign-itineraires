@@ -87,11 +87,17 @@ void main() {
         mode: TravelMode.car,
       ),
       throwsA(
-        isA<GeoplateformeException>().having(
-          (error) => error.retryAfter,
-          'retryAfter',
-          const Duration(seconds: 4),
-        ),
+        isA<GeoplateformeException>()
+            .having(
+              (error) => error.kind,
+              'kind',
+              GeoplateformeFailureKind.rateLimited,
+            )
+            .having(
+              (error) => error.retryAfter,
+              'retryAfter',
+              const Duration(seconds: 4),
+            ),
       ),
     );
   });
@@ -231,11 +237,17 @@ void main() {
     expect(
       () => api.searchPlaces('Paris'),
       throwsA(
-        isA<GeoplateformeException>().having(
-          (error) => error.message,
-          'message',
-          contains('Connexion impossible'),
-        ),
+        isA<GeoplateformeException>()
+            .having(
+              (error) => error.kind,
+              'kind',
+              GeoplateformeFailureKind.offline,
+            )
+            .having(
+              (error) => error.message,
+              'message',
+              contains('Connexion impossible'),
+            ),
       ),
     );
   });

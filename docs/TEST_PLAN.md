@@ -6,11 +6,11 @@ must never be committed, uploaded as artifacts, or copied into defect reports.
 
 ## Current Baseline
 
-The local validation completed on 15 July 2026 produced:
+The local validation completed on 19 July 2026 produced:
 
-- 136 passing deterministic unit and widget tests, excluding the separately
+- 148 passing deterministic unit and widget tests, excluding the separately
   tagged live and golden suites;
-- 93.1% coverage for routing domain logic, controllers, and API parsing;
+- 93.6% coverage for routing domain logic, controllers, and API parsing;
 - a clean Flutter static analysis;
 - a successful self-contained web release build for `/ign-itineraires/`.
 
@@ -83,6 +83,9 @@ Chrome validates planning, persistence, failure states, and guidance startup.
 The Flutter Web integration runner can stall when it injects gestures into an
 active `FlutterMap`; continuous navigation interactions therefore run on
 Android and iOS and are also covered with deterministic controller tests.
+Synthetic trace replay additionally verifies monotonic and bounded progress
+through GPS jitter, parallel-road offsets, backward fixes, and implausible
+forward jumps without committing real user traces.
 
 ### Nightly Validation
 
