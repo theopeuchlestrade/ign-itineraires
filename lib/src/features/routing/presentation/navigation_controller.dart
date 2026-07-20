@@ -27,7 +27,7 @@ class NavigationController extends ChangeNotifier {
   }) : _now = now ?? DateTime.now,
        _streamRetryDelay = streamRetryDelay ?? _defaultStreamRetryDelay,
        _headingTracker = NavigationHeadingTracker(mode),
-       session = NavigationSession(
+       _session = NavigationSession(
          status: NavigationStatus.acquiringPosition,
          destination: destination,
          mode: mode,
@@ -49,7 +49,7 @@ class NavigationController extends ChangeNotifier {
   final Duration Function(int attempt) _streamRetryDelay;
   final NavigationHeadingTracker _headingTracker;
 
-  NavigationSession session;
+  NavigationSession _session;
   NavigationEngine? _engine;
   final GuidanceAnnouncementPlanner _announcementPlanner =
       GuidanceAnnouncementPlanner();
@@ -70,7 +70,10 @@ class NavigationController extends ChangeNotifier {
   bool _recoveringStream = false;
   final _lifecycleTransitions = _LifecycleTransitionQueue();
   int _streamRetryAttempts = 0;
-  bool voiceMutationInProgress = false;
+  bool _voiceMutationInProgress = false;
+
+  NavigationSession get session => _session;
+  bool get voiceMutationInProgress => _voiceMutationInProgress;
 
   Future<void> start() async {
     final operation = ++_operationGeneration;
@@ -83,6 +86,7 @@ class NavigationController extends ChangeNotifier {
         speechRetryAvailable: false,
         signalState: NavigationSignalState.acquiring,
         message: null,
+        locationRecovery: null,
       ),
     );
     try {
@@ -426,7 +430,7 @@ class NavigationController extends ChangeNotifier {
 
   Future<void> toggleVoice() async {
     if (voiceMutationInProgress) return;
-    voiceMutationInProgress = true;
+    _voiceMutationInProgress = true;
     final enabled = !session.voiceEnabled;
     _setSession(
       session.copyWith(voiceEnabled: enabled, speechRetryAvailable: false),
@@ -450,7 +454,7 @@ class NavigationController extends ChangeNotifier {
         ),
       );
     } finally {
-      voiceMutationInProgress = false;
+      _voiceMutationInProgress = false;
       if (!_disposed) notifyListeners();
     }
   }
@@ -626,7 +630,7 @@ class NavigationController extends ChangeNotifier {
 
   void _setSession(NavigationSession value) {
     if (_disposed) return;
-    session = value;
+    _session = value;
     notifyListeners();
   }
 

@@ -1,6 +1,7 @@
 import 'dart:async';
 
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:ign_itineraires/src/features/routing/domain/routing_models.dart';
 import 'package:ign_itineraires/src/features/routing/presentation/widgets/address_search_field.dart';
@@ -109,9 +110,35 @@ void main() {
 
     expect(find.text('Aucun résultat.'), findsOneWidget);
   });
+
+  testWidgets('selects suggestions with arrow keys and Enter', (tester) async {
+    Place? selected;
+    await tester.pumpWidget(
+      _host(
+        (_) async => const [parisStart, parisDestination],
+        onChanged: (value) => selected = value,
+      ),
+    );
+
+    await tester.enterText(find.byType(TextField), 'Paris');
+    await tester.pump(const Duration(milliseconds: 350));
+    await tester.pump();
+    await tester.sendKeyEvent(LogicalKeyboardKey.arrowDown);
+    await tester.pump();
+    await tester.sendKeyEvent(LogicalKeyboardKey.enter);
+    await tester.pump();
+
+    expect(selected, parisStart);
+    expect(find.text(parisStart.label), findsOneWidget);
+    expect(find.text(parisDestination.label), findsNothing);
+    await tester.pump(const Duration(milliseconds: 180));
+  });
 }
 
-Widget _host(Future<List<Place>> Function(String) search) {
+Widget _host(
+  Future<List<Place>> Function(String) search, {
+  ValueChanged<Place?>? onChanged,
+}) {
   return MaterialApp(
     home: Scaffold(
       body: AddressSearchField(
@@ -119,7 +146,7 @@ Widget _host(Future<List<Place>> Function(String) search) {
         icon: Icons.trip_origin,
         value: null,
         search: search,
-        onChanged: (_) {},
+        onChanged: onChanged ?? (_) {},
       ),
     ),
   );

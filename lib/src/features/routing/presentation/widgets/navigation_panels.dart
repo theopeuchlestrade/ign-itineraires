@@ -251,12 +251,14 @@ class _NavigationFailure extends StatelessWidget {
     required this.message,
     required this.onClose,
     this.onExternal,
+    this.onRetry,
     this.onRecovery,
   });
 
   final String message;
   final VoidCallback onClose;
   final VoidCallback? onExternal;
+  final VoidCallback? onRetry;
   final VoidCallback? onRecovery;
 
   @override
@@ -294,6 +296,12 @@ class _NavigationFailure extends StatelessWidget {
                         onPressed: onRecovery,
                         icon: const Icon(Icons.settings_outlined),
                         label: const Text('Ouvrir les réglages'),
+                      ),
+                    if (onRetry != null)
+                      FilledButton.icon(
+                        onPressed: onRetry,
+                        icon: const Icon(Icons.refresh),
+                        label: const Text('Réessayer'),
                       ),
                     if (onExternal != null)
                       OutlinedButton.icon(

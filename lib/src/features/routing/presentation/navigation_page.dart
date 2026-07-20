@@ -189,6 +189,9 @@ class _NavigationPageState extends State<NavigationPage>
         message: session.message ?? 'Le guidage n’a pas pu démarrer.',
         onClose: () => Navigator.pop(context),
         onExternal: session.position == null ? null : _openExternal,
+        onRetry: session.locationRecovery == null
+            ? () => unawaited(_controller.start())
+            : null,
         onRecovery: session.locationRecovery == null
             ? null
             : _openLocationSettings,

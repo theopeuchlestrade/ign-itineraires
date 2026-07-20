@@ -43,6 +43,9 @@ class _IgnRouteMapState extends State<IgnRouteMap> {
   static const _paris = LatLng(46.603354, 1.888334);
 
   late final MapController _mapController;
+  int _tileGeneration = 0;
+  int _consecutiveTileErrors = 0;
+  bool _tilesUnavailable = false;
 
   @override
   void initState() {
@@ -90,6 +93,21 @@ class _IgnRouteMapState extends State<IgnRouteMap> {
     );
   }
 
+  void _recordTileError() {
+    if (!mounted || _tilesUnavailable) return;
+    _consecutiveTileErrors++;
+    if (_consecutiveTileErrors < 3) return;
+    setState(() => _tilesUnavailable = true);
+  }
+
+  void _retryTiles() {
+    setState(() {
+      _tileGeneration++;
+      _consecutiveTileErrors = 0;
+      _tilesUnavailable = false;
+    });
+  }
+
   @override
   Widget build(BuildContext context) {
     final colorScheme = Theme.of(context).colorScheme;
@@ -106,10 +124,12 @@ class _IgnRouteMapState extends State<IgnRouteMap> {
         ),
         children: [
           TileLayer(
+            key: ValueKey(_tileGeneration),
             urlTemplate: ignPlanWmtsUrl,
             userAgentPackageName: 'fr.ign.itineraires',
             maxNativeZoom: 19,
             tileProvider: widget.tileProvider,
+            errorTileCallback: (_, _, _) => _recordTileError(),
           ),
           if (widget.route != null)
             PolylineLayer(
@@ -165,6 +185,44 @@ class _IgnRouteMapState extends State<IgnRouteMap> {
               child: const Icon(Icons.center_focus_strong),
             ),
           ),
+          if (_tilesUnavailable)
+            Positioned(
+              top: 12,
+              left: 12,
+              right: 12,
+              child: Semantics(
+                liveRegion: true,
+                child: Material(
+                  color: colorScheme.errorContainer,
+                  borderRadius: BorderRadius.circular(12),
+                  elevation: 2,
+                  child: Padding(
+                    padding: const EdgeInsets.fromLTRB(12, 8, 8, 8),
+                    child: Row(
+                      children: [
+                        Icon(
+                          Icons.map_outlined,
+                          color: colorScheme.onErrorContainer,
+                        ),
+                        const SizedBox(width: 8),
+                        Expanded(
+                          child: Text(
+                            'Fond de carte indisponible. Le trajet reste utilisable.',
+                            style: TextStyle(
+                              color: colorScheme.onErrorContainer,
+                            ),
+                          ),
+                        ),
+                        TextButton(
+                          onPressed: _retryTiles,
+                          child: const Text('Réessayer'),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+              ),
+            ),
         ],
       ),
     );

@@ -15,11 +15,32 @@ abstract interface class GeoplateformeGateway {
   });
 }
 
+enum GeoplateformeFailureKind {
+  searchUnavailable,
+  noRoute,
+  rateLimited,
+  serviceUnavailable,
+  timeout,
+  offline,
+  invalidResponse,
+}
+
 class GeoplateformeException implements Exception {
-  const GeoplateformeException(this.message, {this.retryAfter});
+  const GeoplateformeException(
+    this.message, {
+    this.kind = GeoplateformeFailureKind.serviceUnavailable,
+    this.retryAfter,
+  });
 
   final String message;
+  final GeoplateformeFailureKind kind;
   final Duration? retryAfter;
+
+  bool get isRetryable => switch (kind) {
+    GeoplateformeFailureKind.noRoute ||
+    GeoplateformeFailureKind.invalidResponse => false,
+    _ => true,
+  };
 
   @override
   String toString() => message;
@@ -52,6 +73,7 @@ class GeoplateformeApi implements GeoplateformeGateway {
     if (body['status'] != 'OK') {
       throw const GeoplateformeException(
         'La recherche d’adresse est momentanément indisponible.',
+        kind: GeoplateformeFailureKind.searchUnavailable,
       );
     }
 
@@ -63,6 +85,7 @@ class GeoplateformeApi implements GeoplateformeGateway {
     } on FormatException {
       throw const GeoplateformeException(
         'Réponse inattendue du service cartes.gouv.fr.',
+        kind: GeoplateformeFailureKind.invalidResponse,
       );
     }
   }
@@ -91,6 +114,7 @@ class GeoplateformeApi implements GeoplateformeGateway {
     if (body['geometry'] == null) {
       throw const GeoplateformeException(
         'Aucun itinéraire n’a été trouvé entre ces deux points.',
+        kind: GeoplateformeFailureKind.noRoute,
       );
     }
     try {
@@ -98,10 +122,12 @@ class GeoplateformeApi implements GeoplateformeGateway {
     } on FormatException {
       throw const GeoplateformeException(
         'Réponse inattendue du service cartes.gouv.fr.',
+        kind: GeoplateformeFailureKind.invalidResponse,
       );
     } on TypeError {
       throw const GeoplateformeException(
         'Réponse inattendue du service cartes.gouv.fr.',
+        kind: GeoplateformeFailureKind.invalidResponse,
       );
     }
   }
@@ -144,22 +170,26 @@ class GeoplateformeApi implements GeoplateformeGateway {
             int.tryParse(response.headers['retry-after'] ?? '') ?? 5;
         throw GeoplateformeException(
           'Trop de demandes. Réessayez dans quelques secondes.',
+          kind: GeoplateformeFailureKind.rateLimited,
           retryAfter: Duration(seconds: seconds),
         );
       }
       if (response.statusCode < 200 || response.statusCode >= 300) {
         throw const GeoplateformeException(
           'Le service cartes.gouv.fr ne répond pas correctement.',
+          kind: GeoplateformeFailureKind.serviceUnavailable,
         );
       }
       return response;
     } on TimeoutException {
       throw const GeoplateformeException(
         'Le service cartes.gouv.fr met trop de temps à répondre.',
+        kind: GeoplateformeFailureKind.timeout,
       );
     } on http.ClientException {
       throw const GeoplateformeException(
         'Connexion impossible. Vérifiez votre accès à Internet.',
+        kind: GeoplateformeFailureKind.offline,
       );
     }
   }
@@ -174,6 +204,7 @@ class GeoplateformeApi implements GeoplateformeGateway {
     } on FormatException catch (_) {
       throw const GeoplateformeException(
         'Réponse inattendue du service cartes.gouv.fr.',
+        kind: GeoplateformeFailureKind.invalidResponse,
       );
     }
   }

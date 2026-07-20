@@ -219,6 +219,7 @@ void main() {
     final api = FakeGeoplateforme()
       ..routeError = const GeoplateformeException(
         'Trop de demandes. Réessayez dans quelques secondes.',
+        kind: GeoplateformeFailureKind.rateLimited,
         retryAfter: Duration(seconds: 5),
       );
     final harness = TestAppHarness(api: api);
@@ -246,11 +247,14 @@ void main() {
     expect(find.textContaining('Trop de demandes'), findsOneWidget);
     expect(find.text(parisStart.label), findsOneWidget);
     expect(find.text(parisDestination.label), findsOneWidget);
+    expect(find.text('Réessayer dans 5 s'), findsOneWidget);
 
     api.routeError = const GeoplateformeException(
       'Connexion impossible. Vérifiez votre accès à Internet.',
+      kind: GeoplateformeFailureKind.offline,
     );
-    await tester.tap(find.text('Calculer l’itinéraire'));
+    await tester.pump(const Duration(seconds: 5));
+    await tester.tap(find.text('Réessayer'));
     await _pumpUi(tester);
     expect(find.textContaining('Connexion impossible'), findsOneWidget);
   });

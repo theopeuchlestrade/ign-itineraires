@@ -37,6 +37,10 @@ The routing feature follows a small layered structure under
 
 Domain logic does not depend on Flutter widgets or platform plugins.
 Controllers coordinate gateways and expose state to the presentation layer.
+Their mutable session fields remain private; widgets consume read-only getters
+and invoke explicit commands. Géoplateforme failures carry a stable category
+and optional retry delay so retry policy does not depend on parsing translated
+messages.
 `navigation_lifecycle.dart` keeps app foreground/background transitions outside
 the page widget while the navigation engine remains platform-independent.
 
