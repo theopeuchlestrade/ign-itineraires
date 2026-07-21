@@ -150,6 +150,8 @@ class _RoutingPageState extends State<RoutingPage> {
           destination: destination,
           mode: _controller.mode,
           dependencies: widget.dependencies,
+          initialStart: _controller.start,
+          initialRoute: _controller.route,
         ),
       ),
     );
