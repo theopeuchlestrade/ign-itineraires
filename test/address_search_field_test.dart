@@ -133,6 +133,30 @@ void main() {
     expect(find.text(parisDestination.label), findsNothing);
     await tester.pump(const Duration(milliseconds: 180));
   });
+
+  testWidgets('keeps suggestions tappable while the keyboard loses focus', (
+    tester,
+  ) async {
+    Place? selected;
+    await tester.pumpWidget(
+      _host(
+        (_) async => const [parisDestination],
+        onChanged: (value) => selected = value,
+      ),
+    );
+
+    await tester.enterText(find.byType(TextField), 'Bastille');
+    await tester.pump(const Duration(milliseconds: 350));
+    await tester.pump();
+    FocusManager.instance.primaryFocus?.unfocus();
+    await tester.pump(const Duration(milliseconds: 250));
+
+    expect(find.text(parisDestination.label), findsOneWidget);
+    await tester.tap(find.text(parisDestination.label));
+    await tester.pump();
+
+    expect(selected, parisDestination);
+  });
 }
 
 Widget _host(

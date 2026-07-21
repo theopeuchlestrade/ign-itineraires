@@ -20,12 +20,16 @@ class NavigationPage extends StatefulWidget {
     required this.destination,
     required this.mode,
     required this.dependencies,
+    this.initialStart,
+    this.initialRoute,
     this.now,
   });
 
   final Place destination;
   final TravelMode mode;
   final AppDependencies dependencies;
+  final Place? initialStart;
+  final RoutePlan? initialRoute;
   final DateTime Function()? now;
 
   @override
@@ -198,32 +202,44 @@ class _NavigationPageState extends State<NavigationPage>
       );
     }
     if (session.route == null || session.position == null) {
-      return AppBackground(
-        child: SafeArea(
-          child: SingleChildScrollView(
-            padding: const EdgeInsets.all(24),
-            child: Center(
-              child: Card(
-                child: Padding(
-                  padding: const EdgeInsets.all(28),
-                  child: Column(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      const CircularProgressIndicator(),
-                      const SizedBox(height: 18),
-                      Text(
-                        session.status == NavigationStatus.acquiringPosition
-                            ? 'Recherche de votre position…'
-                            : 'Calcul du trajet depuis votre position…',
-                        textAlign: TextAlign.center,
-                      ),
-                    ],
+      return Stack(
+        children: [
+          Positioned.fill(
+            child: widget.initialRoute == null
+                ? const AppBackground(child: SizedBox.expand())
+                : IgnRouteMap(
+                    start: widget.initialStart,
+                    destination: widget.destination,
+                    route: widget.initialRoute,
+                    tileProvider: widget.dependencies.tileProvider,
+                  ),
+          ),
+          SafeArea(
+            child: Padding(
+              padding: const EdgeInsets.all(24),
+              child: Center(
+                child: Card(
+                  child: Padding(
+                    padding: const EdgeInsets.all(28),
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        const CircularProgressIndicator(),
+                        const SizedBox(height: 18),
+                        Text(
+                          session.status == NavigationStatus.acquiringPosition
+                              ? 'Recherche de votre position…'
+                              : 'Calcul du trajet depuis votre position…',
+                          textAlign: TextAlign.center,
+                        ),
+                      ],
+                    ),
                   ),
                 ),
               ),
             ),
           ),
-        ),
+        ],
       );
     }
 
@@ -243,43 +259,52 @@ class _NavigationPageState extends State<NavigationPage>
               final compact =
                   constraints.maxHeight < 600 ||
                   MediaQuery.textScalerOf(context).scale(1) >= 1.5;
-              return Column(
+              return Stack(
                 children: [
-                  Expanded(
-                    child: SingleChildScrollView(
-                      child: Column(
-                        children: [
-                          _InstructionBanner(session: session),
-                          const SizedBox(height: 8),
-                          Align(
-                            alignment: Alignment.centerRight,
-                            child: _GpsSignalBadge(session: session),
-                          ),
-                          if (session.message != null) ...[
+                  Align(
+                    alignment: Alignment.topCenter,
+                    child: ConstrainedBox(
+                      constraints: BoxConstraints(
+                        maxHeight: constraints.maxHeight * 0.52,
+                      ),
+                      child: SingleChildScrollView(
+                        child: Column(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            _InstructionBanner(session: session),
                             const SizedBox(height: 8),
-                            _NavigationMessage(message: session.message!),
-                          ],
-                          if (session.speechRetryAvailable) ...[
-                            const SizedBox(height: 8),
-                            _NavigationMessage(
-                              message:
-                                  'La voix n’a pas démarré ; le guidage visuel continue.',
-                              actionLabel: 'Réessayer la voix',
-                              onAction: _controller.retrySpeech,
+                            Align(
+                              alignment: Alignment.centerRight,
+                              child: _GpsSignalBadge(session: session),
                             ),
+                            if (session.message != null) ...[
+                              const SizedBox(height: 8),
+                              _NavigationMessage(message: session.message!),
+                            ],
+                            if (session.speechRetryAvailable) ...[
+                              const SizedBox(height: 8),
+                              _NavigationMessage(
+                                message:
+                                    'La voix n’a pas démarré ; le guidage visuel continue.',
+                                actionLabel: 'Réessayer la voix',
+                                onAction: _controller.retrySpeech,
+                              ),
+                            ],
                           ],
-                        ],
+                        ),
                       ),
                     ),
                   ),
-                  const SizedBox(height: 8),
-                  _NavigationControls(
-                    session: session,
-                    compact: compact,
-                    now: widget.now ?? DateTime.now,
-                    onRecenter: () => _controller.setFollowingUser(true),
-                    onExternal: _openExternal,
-                    onStop: _confirmStop,
+                  Align(
+                    alignment: Alignment.bottomCenter,
+                    child: _NavigationControls(
+                      session: session,
+                      compact: compact,
+                      now: widget.now ?? DateTime.now,
+                      onRecenter: () => _controller.setFollowingUser(true),
+                      onExternal: _openExternal,
+                      onStop: _confirmStop,
+                    ),
                   ),
                 ],
               );

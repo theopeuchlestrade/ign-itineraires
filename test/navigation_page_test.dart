@@ -245,6 +245,36 @@ void main() {
       moreOrLessEquals(832, epsilon: 1),
     );
   });
+
+  testWidgets('keeps the route overview control tappable above the map', (
+    tester,
+  ) async {
+    final harness = TestAppHarness();
+    addTearDown(harness.dispose);
+    await tester.binding.setSurfaceSize(const Size(390, 844));
+    addTearDown(() => tester.binding.setSurfaceSize(null));
+
+    await tester.pumpWidget(
+      MaterialApp(
+        home: NavigationPage(
+          destination: parisDestination,
+          mode: TravelMode.car,
+          dependencies: harness.dependencies,
+        ),
+      ),
+    );
+    for (var frame = 0; frame < 5; frame++) {
+      await tester.pump(const Duration(milliseconds: 50));
+    }
+
+    final recenterFinder = find.widgetWithText(OutlinedButton, 'Recentrer');
+    expect(tester.widget<OutlinedButton>(recenterFinder).onPressed, isNull);
+
+    await tester.tap(find.byTooltip('Voir tout le trajet'));
+    await tester.pump();
+
+    expect(tester.widget<OutlinedButton>(recenterFinder).onPressed, isNotNull);
+  });
 }
 
 NavigationSession _navigationSession({required double headingDegrees}) {

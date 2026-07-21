@@ -32,7 +32,6 @@ class _AddressSearchFieldState extends State<AddressSearchField> {
   late final TextEditingController _controller;
   late final FocusNode _focusNode;
   Timer? _debounce;
-  Timer? _focusDismiss;
   List<Place> _suggestions = const [];
   bool _loading = false;
   String? _statusMessage;
@@ -44,7 +43,7 @@ class _AddressSearchFieldState extends State<AddressSearchField> {
   void initState() {
     super.initState();
     _controller = TextEditingController(text: widget.value?.label ?? '');
-    _focusNode = FocusNode()..addListener(_onFocusChanged);
+    _focusNode = FocusNode();
   }
 
   @override
@@ -70,27 +69,19 @@ class _AddressSearchFieldState extends State<AddressSearchField> {
   @override
   void dispose() {
     _debounce?.cancel();
-    _focusDismiss?.cancel();
     _controller.dispose();
-    _focusNode
-      ..removeListener(_onFocusChanged)
-      ..dispose();
+    _focusNode.dispose();
     super.dispose();
   }
 
-  void _onFocusChanged() {
-    _focusDismiss?.cancel();
-    if (!_focusNode.hasFocus && mounted) {
-      _focusDismiss = Timer(const Duration(milliseconds: 180), () {
-        if (mounted && !_focusNode.hasFocus) {
-          setState(() {
-            _suggestions = const [];
-            _highlightedSuggestion = -1;
-            _statusMessage = null;
-          });
-        }
-      });
-    }
+  void _dismissSearch() {
+    _focusNode.unfocus();
+    if (_suggestions.isEmpty && _statusMessage == null) return;
+    setState(() {
+      _suggestions = const [];
+      _highlightedSuggestion = -1;
+      _statusMessage = null;
+    });
   }
 
   void _onTextChanged(String value) {
@@ -195,106 +186,111 @@ class _AddressSearchFieldState extends State<AddressSearchField> {
 
   @override
   Widget build(BuildContext context) {
-    return Column(
-      mainAxisSize: MainAxisSize.min,
-      children: [
-        Focus(
-          canRequestFocus: false,
-          skipTraversal: true,
-          onKeyEvent: _onKeyEvent,
-          child: TextField(
-            controller: _controller,
-            focusNode: _focusNode,
-            onChanged: _onTextChanged,
-            onSubmitted: (_) {
-              if (_suggestions.isEmpty) return;
-              final index = _highlightedSuggestion < 0
-                  ? 0
-                  : _highlightedSuggestion;
-              _select(_suggestions[index]);
-            },
-            textInputAction: TextInputAction.search,
-            decoration: InputDecoration(
-              labelText: widget.label,
-              prefixIcon: Icon(widget.icon),
-              suffixIcon: Row(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  if (_loading)
-                    const Padding(
-                      padding: EdgeInsets.all(14),
-                      child: SizedBox.square(
-                        dimension: 18,
-                        child: CircularProgressIndicator(strokeWidth: 2),
+    return TapRegion(
+      onTapOutside: (_) => _dismissSearch(),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Focus(
+            canRequestFocus: false,
+            skipTraversal: true,
+            onKeyEvent: _onKeyEvent,
+            child: TextField(
+              controller: _controller,
+              focusNode: _focusNode,
+              onChanged: _onTextChanged,
+              onSubmitted: (_) {
+                if (_suggestions.isEmpty) return;
+                final index = _highlightedSuggestion < 0
+                    ? 0
+                    : _highlightedSuggestion;
+                _select(_suggestions[index]);
+              },
+              textInputAction: TextInputAction.search,
+              decoration: InputDecoration(
+                labelText: widget.label,
+                prefixIcon: Icon(widget.icon),
+                suffixIcon: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    if (_loading)
+                      const Padding(
+                        padding: EdgeInsets.all(14),
+                        child: SizedBox.square(
+                          dimension: 18,
+                          child: CircularProgressIndicator(strokeWidth: 2),
+                        ),
                       ),
-                    ),
-                  if (widget.onUseCurrentLocation != null)
-                    IconButton(
-                      tooltip: 'Utiliser ma position',
-                      onPressed: widget.locating
-                          ? null
-                          : widget.onUseCurrentLocation,
-                      icon: widget.locating
-                          ? const SizedBox.square(
-                              dimension: 20,
-                              child: CircularProgressIndicator(strokeWidth: 2),
-                            )
-                          : const Icon(Icons.my_location),
-                    ),
-                ],
-              ),
-            ),
-          ),
-        ),
-        if (_suggestions.isNotEmpty)
-          Semantics(
-            liveRegion: true,
-            label: '${_suggestions.length} suggestions disponibles',
-            child: Material(
-              elevation: 3,
-              borderRadius: const BorderRadius.vertical(
-                bottom: Radius.circular(12),
-              ),
-              clipBehavior: Clip.antiAlias,
-              child: ConstrainedBox(
-                constraints: const BoxConstraints(maxHeight: 230),
-                child: ListView.separated(
-                  shrinkWrap: true,
-                  padding: EdgeInsets.zero,
-                  itemCount: _suggestions.length,
-                  separatorBuilder: (_, _) => const Divider(height: 1),
-                  itemBuilder: (context, index) {
-                    final place = _suggestions[index];
-                    return ListTile(
-                      dense: true,
-                      selected: index == _highlightedSuggestion,
-                      selectedTileColor: Theme.of(
-                        context,
-                      ).colorScheme.secondaryContainer,
-                      leading: const Icon(Icons.place_outlined),
-                      title: Text(place.label),
-                      onTap: () => _select(place),
-                    );
-                  },
-                ),
-              ),
-            ),
-          )
-        else if (_statusMessage != null)
-          Semantics(
-            liveRegion: true,
-            child: Padding(
-              padding: const EdgeInsets.fromLTRB(12, 8, 12, 0),
-              child: Align(
-                alignment: Alignment.centerLeft,
-                child: Text(
-                  _statusMessage!,
-                  style: Theme.of(context).textTheme.bodySmall,
+                    if (widget.onUseCurrentLocation != null)
+                      IconButton(
+                        tooltip: 'Utiliser ma position',
+                        onPressed: widget.locating
+                            ? null
+                            : widget.onUseCurrentLocation,
+                        icon: widget.locating
+                            ? const SizedBox.square(
+                                dimension: 20,
+                                child: CircularProgressIndicator(
+                                  strokeWidth: 2,
+                                ),
+                              )
+                            : const Icon(Icons.my_location),
+                      ),
+                  ],
                 ),
               ),
             ),
           ),
-      ],
+          if (_suggestions.isNotEmpty)
+            Semantics(
+              liveRegion: true,
+              label: '${_suggestions.length} suggestions disponibles',
+              child: Material(
+                elevation: 3,
+                borderRadius: const BorderRadius.vertical(
+                  bottom: Radius.circular(12),
+                ),
+                clipBehavior: Clip.antiAlias,
+                child: ConstrainedBox(
+                  constraints: const BoxConstraints(maxHeight: 230),
+                  child: ListView.separated(
+                    shrinkWrap: true,
+                    padding: EdgeInsets.zero,
+                    itemCount: _suggestions.length,
+                    separatorBuilder: (_, _) => const Divider(height: 1),
+                    itemBuilder: (context, index) {
+                      final place = _suggestions[index];
+                      return ListTile(
+                        dense: true,
+                        selected: index == _highlightedSuggestion,
+                        selectedTileColor: Theme.of(
+                          context,
+                        ).colorScheme.secondaryContainer,
+                        leading: const Icon(Icons.place_outlined),
+                        title: Text(place.label),
+                        onTap: () => _select(place),
+                      );
+                    },
+                  ),
+                ),
+              ),
+            )
+          else if (_statusMessage != null)
+            Semantics(
+              liveRegion: true,
+              child: Padding(
+                padding: const EdgeInsets.fromLTRB(12, 8, 12, 0),
+                child: Align(
+                  alignment: Alignment.centerLeft,
+                  child: Text(
+                    _statusMessage!,
+                    style: Theme.of(context).textTheme.bodySmall,
+                  ),
+                ),
+              ),
+            ),
+        ],
+      ),
     );
   }
 }

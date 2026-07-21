@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'dart:convert';
 
+import 'package:flutter/foundation.dart';
 import 'package:http/http.dart' as http;
 import 'package:ign_itineraires/src/features/routing/domain/routing_models.dart';
 import 'package:ign_itineraires/src/network_endpoints.dart';
@@ -110,15 +111,19 @@ class GeoplateformeApi implements GeoplateformeGateway {
       'timeUnit': 'second',
       'crs': 'EPSG:4326',
     });
-    final body = _decodeObject(response);
-    if (body['geometry'] == null) {
-      throw const GeoplateformeException(
-        'Aucun itinéraire n’a été trouvé entre ces deux points.',
-        kind: GeoplateformeFailureKind.noRoute,
-      );
-    }
     try {
-      return RoutePlan.fromJson(body);
+      final route = await compute(
+        _parseRouteResponse,
+        response.bodyBytes,
+        debugLabel: 'parse-geoplateforme-route',
+      );
+      if (route == null) {
+        throw const GeoplateformeException(
+          'Aucun itinéraire n’a été trouvé entre ces deux points.',
+          kind: GeoplateformeFailureKind.noRoute,
+        );
+      }
+      return route;
     } on FormatException {
       throw const GeoplateformeException(
         'Réponse inattendue du service cartes.gouv.fr.',
@@ -208,4 +213,13 @@ class GeoplateformeApi implements GeoplateformeGateway {
       );
     }
   }
+}
+
+RoutePlan? _parseRouteResponse(Uint8List bodyBytes) {
+  final decoded = jsonDecode(utf8.decode(bodyBytes));
+  if (decoded is! Map<String, dynamic>) {
+    throw const FormatException('Expected a JSON object');
+  }
+  if (decoded['geometry'] == null) return null;
+  return RoutePlan.fromJson(decoded);
 }
