@@ -25,6 +25,9 @@ flutter run -d web-server --web-hostname 127.0.0.1 --web-port 8088
 
 Then open <http://127.0.0.1:8088>.
 
+To install and test the application on a physical iPhone, including wireless
+execution through Xcode, follow [Test on a Physical iPhone](ios-device-testing.md).
+
 ## 3. Make a Small Change
 
 Try a simple change like fixing a typo in the UI or updating a documentation string.

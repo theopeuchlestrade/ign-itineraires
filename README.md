@@ -81,6 +81,7 @@ logos, icons, domains, or product identity. See
 
 - [Contributing](CONTRIBUTING.md) — How to contribute to the project
 - [First Contribution](docs/first-contribution.md) — Quick start for new contributors
+- [Test on an iPhone](docs/ios-device-testing.md) — Wired and wireless physical-device setup
 - [Architecture](docs/architecture.md) — Technical architecture details
 - [Test Plan](docs/TEST_PLAN.md) — Platform matrix and manual scenarios
 - [Release Checklist](docs/RELEASE_CHECKLIST.md) — Release preparation steps
