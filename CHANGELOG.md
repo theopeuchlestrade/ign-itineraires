@@ -38,6 +38,9 @@ initial baseline represented by the repository's root commit.
   retry, and an explicit degraded state when map tiles repeatedly fail.
 - Added deterministic synthetic GPS trace replay scenarios for jitter,
   parallel-road offsets, backward fixes, and implausible jumps.
+- Added deterministic maneuver-oracle replays, live end-to-end guidance routes,
+  nightly Android/iOS simulator journeys, and a coordinate-free physical-device
+  diagnostics overlay.
 
 ### Implementation
 
@@ -48,6 +51,9 @@ initial baseline represented by the repository's root commit.
   retryable outages, rate limits, invalid responses, and missing routes.
 - Removed duplicate pull-request dependency workflows while retaining the
   blocking CI checks and scheduled vulnerability scan.
+- Anchors maneuvers to step geometry, normalizes maneuver vocabulary, aligns
+  followed-mode heading to the route when trustworthy, preserves reliable
+  reverse headings, and confirms arrival using mode-specific accuracy rules.
 
 ### Security
 

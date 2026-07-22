@@ -9,6 +9,7 @@ class _InstructionBanner extends StatelessWidget {
   Widget build(BuildContext context) {
     final step = session.upcomingStep;
     return Card(
+      key: const Key('navigation-instruction'),
       child: Padding(
         padding: const EdgeInsets.all(16),
         child: Row(
@@ -36,8 +37,7 @@ class _InstructionBanner extends StatelessWidget {
                     style: Theme.of(context).textTheme.titleLarge,
                   ),
                   Text(
-                    step?.type == 'arrive' &&
-                            session.remainingDistanceMeters > 80
+                    step?.normalizedType == 'arrive'
                         ? 'Continuez vers votre destination'
                         : step?.instruction ?? 'Suivez l’itinéraire',
                   ),

@@ -72,6 +72,13 @@ class NavigationEngine {
       position.point,
       _route.points.last,
     );
+    final inArrivalTail =
+        remaining <= 100 ||
+        (_route.distanceMeters > 0 && progress / _route.distanceMeters >= 0.95);
+    final stationaryAtDestination =
+        rawDistanceToDestination <= 10 &&
+        position.speedMetersPerSecond.isFinite &&
+        position.speedMetersPerSecond < 2;
 
     return GuidanceUpdate(
       snappedPosition: projection.point,
@@ -82,7 +89,9 @@ class NavigationEngine {
       distanceToManeuverMeters: distanceToManeuver,
       remainingDistanceMeters: remaining,
       remainingDurationSeconds: duration,
-      arrived: rawDistanceToDestination <= arrivalThreshold && remaining <= 80,
+      arrived:
+          rawDistanceToDestination <= arrivalThreshold &&
+          (inArrivalTail || stationaryAtDestination),
       routeHeadingDegrees: projection.routeHeadingDegrees,
       reverseDirection:
           position.hasReliableHeading &&
@@ -91,6 +100,7 @@ class NavigationEngine {
                 projection.routeHeadingDegrees,
               ) >
               100,
+      rawDistanceToDestinationMeters: rawDistanceToDestination,
     );
   }
 
@@ -107,27 +117,61 @@ class NavigationHeadingTracker {
 
   final TravelMode _mode;
   NavigationPosition? _anchor;
-  double? _lastHeadingDegrees;
+  double? _lastObservedHeadingDegrees;
 
   void reset() {
     _anchor = null;
-    _lastHeadingDegrees = null;
+    _lastObservedHeadingDegrees = null;
   }
 
-  double resolve(
+  NavigationHeadingDecision resolve(
     NavigationPosition position, {
     required double routeHeadingDegrees,
+    required double distanceFromRouteMeters,
   }) {
     final movementHeading = _movementHeading(position);
-    final previousHeading = _lastHeadingDegrees;
-    final candidate =
-        movementHeading ??
-        _reliablePlatformHeading(position, previousHeading) ??
-        previousHeading ??
-        routeHeadingDegrees;
-    final normalized = _normalizeHeading(candidate);
-    _lastHeadingDegrees = normalized;
-    return normalized;
+    final previousHeading = _lastObservedHeadingDegrees;
+    final gpsHeading = _reliablePlatformHeading(position);
+    final observed = movementHeading ?? gpsHeading ?? previousHeading;
+    final normalizedRoute = _normalizeHeading(routeHeadingDegrees);
+    final difference = observed == null
+        ? 0.0
+        : _angleDifference(observed, normalizedRoute);
+    final onRouteThreshold = _mode == TravelMode.pedestrian ? 15.0 : 25.0;
+    final confidentlyOnRoute =
+        distanceFromRouteMeters - position.accuracyMeters <= onRouteThreshold;
+
+    late final double display;
+    late final NavigationHeadingSource source;
+    if (observed == null) {
+      display = normalizedRoute;
+      source = NavigationHeadingSource.routeFallback;
+    } else {
+      _lastObservedHeadingDegrees = _normalizeHeading(observed);
+      if (confidentlyOnRoute && difference < 75) {
+        display = normalizedRoute;
+        source = NavigationHeadingSource.routeAligned;
+      } else {
+        display = _lastObservedHeadingDegrees!;
+        source = movementHeading != null
+            ? NavigationHeadingSource.movement
+            : gpsHeading != null
+            ? NavigationHeadingSource.gps
+            : NavigationHeadingSource.previous;
+      }
+    }
+    return NavigationHeadingDecision(
+      gpsHeadingDegrees: gpsHeading == null
+          ? null
+          : _normalizeHeading(gpsHeading),
+      movementHeadingDegrees: movementHeading == null
+          ? null
+          : _normalizeHeading(movementHeading),
+      routeHeadingDegrees: normalizedRoute,
+      displayHeadingDegrees: display,
+      source: source,
+      angularDifferenceDegrees: difference,
+    );
   }
 
   double? _movementHeading(NavigationPosition position) {
@@ -160,16 +204,9 @@ class NavigationHeadingTracker {
     return _bearingBetween(anchor.point, position.point);
   }
 
-  double? _reliablePlatformHeading(
-    NavigationPosition position,
-    double? previousHeading,
-  ) {
+  double? _reliablePlatformHeading(NavigationPosition position) {
     if (!position.hasReliableHeading) return null;
-    if (previousHeading == null ||
-        _angleDifference(position.headingDegrees, previousHeading) <= 60) {
-      return position.headingDegrees;
-    }
-    return null;
+    return position.headingDegrees;
   }
 }
 
@@ -177,7 +214,6 @@ class GuidanceAnnouncementPlanner {
   final Map<int, Set<int>> _announcedThresholds = {};
   final Set<int> _announcedRoundaboutExits = {};
   bool _initialAnnounced = false;
-  bool _arrivalAnnounced = false;
 
   String? initial(RoutePlan route) {
     if (_initialAnnounced || route.steps.isEmpty) return null;
@@ -190,18 +226,12 @@ class GuidanceAnnouncementPlanner {
     required RoutePlan route,
     required TravelMode mode,
   }) {
-    if (update.arrived) {
-      if (_arrivalAnnounced) return null;
-      _arrivalAnnounced = true;
-      return 'Vous êtes arrivé à destination.';
-    }
+    if (update.arrived) return null;
     if (route.steps.isEmpty) return null;
 
     final stepIndex = update.upcomingStepIndex;
     final step = route.steps[stepIndex];
-    if (step.type == 'arrive' && update.remainingDistanceMeters > 80) {
-      return null;
-    }
+    if (step.normalizedType == 'arrive') return null;
     final thresholds = _thresholds(mode);
     final announced = _announcedThresholds.putIfAbsent(
       stepIndex,
@@ -242,7 +272,7 @@ class GuidanceAnnouncementPlanner {
     if (route.steps.isEmpty) return null;
     final normalizedIndex = stepIndex.clamp(0, route.steps.length - 1);
     final step = route.steps[normalizedIndex];
-    if (step.type == 'arrive' && remainingDistanceMeters > 80) {
+    if (step.normalizedType == 'arrive') {
       return 'Continuez vers votre destination';
     }
     final thresholds = _thresholds(mode);
@@ -260,7 +290,6 @@ class GuidanceAnnouncementPlanner {
     _announcedThresholds.clear();
     _announcedRoundaboutExits.clear();
     _initialAnnounced = false;
-    _arrivalAnnounced = false;
   }
 
   List<int> _thresholds(TravelMode mode) =>
@@ -309,12 +338,13 @@ class _NavigationTrack {
         ? 1
         : route.distanceMeters / rawStepTotal;
     var stepTotal = 0.0;
-    stepEndDistances = route.steps
+    final fallbackStepEndDistances = route.steps
         .map((step) {
           stepTotal += step.distanceMeters * stepScale;
           return stepTotal;
         })
         .toList(growable: false);
+    stepEndDistances = _buildStepEndDistances(fallbackStepEndDistances);
   }
 
   final RoutePlan route;
@@ -322,6 +352,45 @@ class _NavigationTrack {
   late final List<double> _cumulativeGeometryDistances;
   late final double _routeScale;
   late final List<double> stepEndDistances;
+
+  List<double> _buildStepEndDistances(List<double> fallbackDistances) {
+    final result = <double>[];
+    var previous = 0.0;
+    for (var stepIndex = 0; stepIndex < route.steps.length; stepIndex++) {
+      final step = route.steps[stepIndex];
+      final fallback = fallbackDistances[stepIndex]
+          .clamp(previous, route.distanceMeters)
+          .toDouble();
+      if (step.points.isEmpty) {
+        result.add(fallback);
+        previous = fallback;
+        continue;
+      }
+
+      final endpoint = step.points.last;
+      _Projection? best;
+      for (
+        var segmentIndex = 0;
+        segmentIndex < _segmentLengths.length;
+        segmentIndex++
+      ) {
+        final candidate = _projectOnSegment(endpoint, segmentIndex);
+        if (candidate.progressMeters + 1 < previous) continue;
+        if (best == null || candidate.distanceMeters < best.distanceMeters) {
+          best = candidate;
+        }
+      }
+      final projected = best;
+      final anchor = projected != null && projected.distanceMeters <= 60
+          ? projected.progressMeters
+                .clamp(previous, route.distanceMeters)
+                .toDouble()
+          : fallback;
+      result.add(anchor);
+      previous = anchor;
+    }
+    return result;
+  }
 
   _Projection project(
     LatLng position, {

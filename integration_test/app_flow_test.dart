@@ -119,6 +119,18 @@ void main() {
     expect(harness.speech.messages, isNotEmpty);
 
     expect(find.byType(FlutterMap), findsOneWidget);
+    expect(find.text('Tournez à droite sur RUE SAINT-ANTOINE'), findsOneWidget);
+    final followedMarker = tester.widget<Transform>(
+      find.byKey(const Key('navigation-user-marker')),
+    );
+    expect(followedMarker.transform.storage[0], closeTo(1, 0.0001));
+    expect(followedMarker.transform.storage[1], closeTo(0, 0.0001));
+    debugPrint(
+      'GUIDANCE_REPORT scenario=synthetic-paris step=turn-right '
+      'displayed_heading=90 angular_difference=0 marker_error=0 '
+      'announcements=${harness.speech.messages.length} '
+      'invariant=ok',
+    );
     if (kIsWeb) {
       await tester.pumpWidget(const SizedBox.shrink());
       await _pumpUi(tester);
@@ -168,6 +180,12 @@ void main() {
     await _pumpUi(tester);
     expect(find.text('Vous êtes arrivé'), findsOneWidget);
     expect(harness.wakeLock.enabled, isFalse);
+    debugPrint(
+      'GUIDANCE_REPORT scenario=synthetic-paris step=arrival '
+      'displayed_heading=90 angular_difference=0 marker_error=0 '
+      'announcements=${harness.speech.messages.length} '
+      'invariant=resources-released',
+    );
     if (!kIsWeb) {
       await binding.takeScreenshot('navigation-arrival');
     }

@@ -101,7 +101,15 @@ class RouteStep {
   final List<LatLng> points;
   final int? exitNumber;
 
-  String get normalizedType => type.trim().toLowerCase().replaceAll('_', ' ');
+  String get normalizedType => _normalizeNavigationToken(type);
+
+  String get normalizedModifier =>
+      switch (_normalizeNavigationToken(modifier)) {
+        'u turn' => 'uturn',
+        'keep left' || 'bear left' => 'slight left',
+        'keep right' || 'bear right' => 'slight right',
+        final value => value,
+      };
 
   bool get isRoundabout => switch (normalizedType) {
     'roundabout' || 'rotary' || 'roundabout turn' => true,
@@ -116,7 +124,8 @@ class RouteStep {
   }
 
   String get instruction {
-    final direction = switch (modifier) {
+    final normalizedDirection = normalizedModifier;
+    final direction = switch (normalizedDirection) {
       'left' => 'à gauche',
       'right' => 'à droite',
       'slight left' => 'légèrement à gauche',
@@ -126,9 +135,9 @@ class RouteStep {
       _ => 'tout droit',
     };
     final road = roadName.isEmpty ? '' : ' sur $roadName';
-    final directedTurn = modifier == 'uturn'
+    final directedTurn = normalizedDirection == 'uturn'
         ? 'Faites demi-tour$road'
-        : modifier == 'straight'
+        : normalizedDirection == 'straight'
         ? 'Continuez tout droit$road'
         : 'Tournez $direction$road';
     final exit = exitNumber;
@@ -139,48 +148,51 @@ class RouteStep {
 
     return switch (normalizedType) {
       'depart' =>
-        modifier == 'straight'
+        normalizedDirection == 'straight'
             ? 'Partez tout droit$road'
             : roadName.isEmpty
             ? 'Partez'
             : 'Partez$road',
       'arrive' =>
-        'Vous êtes arrivé${modifier == 'left'
+        'Vous êtes arrivé${normalizedDirection == 'left'
             ? ' sur votre gauche'
-            : modifier == 'right'
+            : normalizedDirection == 'right'
             ? ' sur votre droite'
             : ''}',
       'turn' => directedTurn,
       'merge' =>
-        modifier == 'straight'
+        normalizedDirection == 'straight'
             ? 'Insérez-vous$road'
             : 'Insérez-vous $direction$road',
       'ramp' || 'on ramp' =>
-        modifier == 'straight'
+        normalizedDirection == 'straight'
             ? 'Prenez la bretelle$road'
             : 'Prenez la bretelle $direction$road',
       'off ramp' =>
-        modifier == 'straight'
+        normalizedDirection == 'straight'
             ? 'Prenez la sortie$road'
             : 'Prenez la sortie $direction$road',
       'fork' =>
-        modifier == 'left' || modifier == 'slight left'
+        normalizedDirection == 'left' || normalizedDirection == 'slight left'
             ? 'À l’embranchement, tenez la gauche$road'
-            : modifier == 'right' || modifier == 'slight right'
+            : normalizedDirection == 'right' ||
+                  normalizedDirection == 'slight right'
             ? 'À l’embranchement, tenez la droite$road'
             : 'À l’embranchement, continuez tout droit$road',
       'end of road' =>
-        modifier == 'uturn'
+        normalizedDirection == 'uturn'
             ? 'Au bout de la route, faites demi-tour$road'
             : 'Au bout de la route, tournez $direction$road',
       'roundabout' || 'rotary' || 'roundabout turn' => roundaboutInstruction,
       'exit roundabout' || 'exit rotary' =>
         roadName.isEmpty ? 'Sortez du rond-point' : 'Sortez du rond-point$road',
       'new name' =>
-        modifier == 'straight' ? 'Continuez$road' : 'Continuez $direction$road',
+        normalizedDirection == 'straight'
+            ? 'Continuez$road'
+            : 'Continuez $direction$road',
       'continue' => 'Continuez $direction$road',
       'notification' || 'use lane' =>
-        modifier == 'straight'
+        normalizedDirection == 'straight'
             ? 'Continuez tout droit$road'
             : 'Continuez $direction$road',
       _ => directedTurn,
@@ -349,3 +361,9 @@ bool _validCoordinate(double? latitude, double? longitude) =>
     latitude <= 90 &&
     longitude >= -180 &&
     longitude <= 180;
+
+String _normalizeNavigationToken(String value) => value
+    .trim()
+    .toLowerCase()
+    .replaceAll(RegExp(r'[_-]+'), ' ')
+    .replaceAll(RegExp(r'\s+'), ' ');

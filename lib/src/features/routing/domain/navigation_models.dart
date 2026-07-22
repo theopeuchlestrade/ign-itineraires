@@ -24,6 +24,32 @@ enum NavigationSignalState {
   interrupted,
 }
 
+enum NavigationHeadingSource {
+  routeAligned,
+  movement,
+  gps,
+  previous,
+  routeFallback,
+}
+
+class NavigationHeadingDecision {
+  const NavigationHeadingDecision({
+    required this.routeHeadingDegrees,
+    required this.displayHeadingDegrees,
+    required this.source,
+    required this.angularDifferenceDegrees,
+    this.gpsHeadingDegrees,
+    this.movementHeadingDegrees,
+  });
+
+  final double? gpsHeadingDegrees;
+  final double? movementHeadingDegrees;
+  final double routeHeadingDegrees;
+  final double displayHeadingDegrees;
+  final NavigationHeadingSource source;
+  final double angularDifferenceDegrees;
+}
+
 class NavigationPosition {
   const NavigationPosition({
     required this.point,
@@ -70,6 +96,7 @@ class GuidanceUpdate {
     required this.arrived,
     this.routeHeadingDegrees = 0,
     this.reverseDirection = false,
+    this.rawDistanceToDestinationMeters = double.infinity,
   });
 
   final LatLng snappedPosition;
@@ -83,6 +110,7 @@ class GuidanceUpdate {
   final bool arrived;
   final double routeHeadingDegrees;
   final bool reverseDirection;
+  final double rawDistanceToDestinationMeters;
 }
 
 class NavigationSession {
@@ -103,6 +131,7 @@ class NavigationSession {
     this.followingUser = true,
     this.signalState = NavigationSignalState.acquiring,
     this.displayHeadingDegrees = 0,
+    this.headingDecision,
     this.speechRetryAvailable = false,
     this.message,
     this.locationRecovery,
@@ -124,6 +153,7 @@ class NavigationSession {
   final bool followingUser;
   final NavigationSignalState signalState;
   final double displayHeadingDegrees;
+  final NavigationHeadingDecision? headingDecision;
   final bool speechRetryAvailable;
   final String? message;
   final LocationRecovery? locationRecovery;
@@ -163,6 +193,7 @@ class NavigationSession {
     bool? followingUser,
     NavigationSignalState? signalState,
     double? displayHeadingDegrees,
+    Object? headingDecision = _unchanged,
     bool? speechRetryAvailable,
     Object? message = _unchanged,
     Object? locationRecovery = _unchanged,
@@ -189,6 +220,9 @@ class NavigationSession {
       signalState: signalState ?? this.signalState,
       displayHeadingDegrees:
           displayHeadingDegrees ?? this.displayHeadingDegrees,
+      headingDecision: identical(headingDecision, _unchanged)
+          ? this.headingDecision
+          : headingDecision as NavigationHeadingDecision?,
       speechRetryAvailable: speechRetryAvailable ?? this.speechRetryAvailable,
       message: identical(message, _unchanged)
           ? this.message

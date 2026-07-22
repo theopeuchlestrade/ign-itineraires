@@ -77,6 +77,31 @@ void main() {
       expect(pedestrian.arrived, isFalse);
     });
 
+    test('uses the step geometry endpoint as the maneuver anchor', () {
+      final engine = NavigationEngine(
+        _routeWithInconsistentStepDistances(),
+        TravelMode.car,
+      );
+
+      final update = engine.update(_position(0, 0));
+
+      expect(update.distanceToManeuverMeters, closeTo(300, 5));
+      expect(update.upcomingStepIndex, 1);
+    });
+
+    test('accepts a stationary destination fix with delayed progress', () {
+      final engine = NavigationEngine(_route(), TravelMode.car);
+
+      final update = engine.update(
+        _position(0, 0.01, speedMetersPerSecond: 0),
+        previousProgressMeters: 500,
+      );
+
+      expect(update.progressMeters, lessThan(950));
+      expect(update.rawDistanceToDestinationMeters, lessThan(1));
+      expect(update.arrived, isTrue);
+    });
+
     test('does not move progress backwards after a U-turn GPS sequence', () {
       final engine = NavigationEngine(_route(), TravelMode.car);
       final outbound = engine.update(_position(0, 0.007));
@@ -176,8 +201,24 @@ void main() {
         timestamp: DateTime(2026, 1, 1, 12, 0, 2),
       );
 
-      expect(tracker.resolve(start, routeHeadingDegrees: 180), 180);
-      expect(tracker.resolve(east, routeHeadingDegrees: 180), closeTo(90, 1));
+      expect(
+        tracker
+            .resolve(
+              start,
+              routeHeadingDegrees: 180,
+              distanceFromRouteMeters: 0,
+            )
+            .displayHeadingDegrees,
+        180,
+      );
+      final decision = tracker.resolve(
+        east,
+        routeHeadingDegrees: 180,
+        distanceFromRouteMeters: 0,
+      );
+      expect(decision.displayHeadingDegrees, closeTo(90, 1));
+      expect(decision.movementHeadingDegrees, closeTo(90, 1));
+      expect(decision.source, NavigationHeadingSource.movement);
     });
 
     test('does not rotate for sub-accuracy GPS jitter', () {
@@ -196,8 +237,45 @@ void main() {
         timestamp: DateTime(2026, 1, 1, 12, 0, 1),
       );
 
-      expect(tracker.resolve(start, routeHeadingDegrees: 90), 90);
-      expect(tracker.resolve(jitter, routeHeadingDegrees: 0), 90);
+      expect(
+        tracker
+            .resolve(start, routeHeadingDegrees: 90, distanceFromRouteMeters: 0)
+            .displayHeadingDegrees,
+        90,
+      );
+      expect(
+        tracker
+            .resolve(jitter, routeHeadingDegrees: 0, distanceFromRouteMeters: 0)
+            .displayHeadingDegrees,
+        90,
+      );
+    });
+
+    test('aligns a plausible observed heading to the road tangent', () {
+      final tracker = NavigationHeadingTracker(TravelMode.car);
+      final decision = tracker.resolve(
+        _position(0, 0, headingDegrees: 35),
+        routeHeadingDegrees: 90,
+        distanceFromRouteMeters: 3,
+      );
+
+      expect(decision.displayHeadingDegrees, 90);
+      expect(decision.gpsHeadingDegrees, 35);
+      expect(decision.angularDifferenceDegrees, 55);
+      expect(decision.source, NavigationHeadingSource.routeAligned);
+    });
+
+    test('preserves a reliable reverse heading instead of snapping it', () {
+      final tracker = NavigationHeadingTracker(TravelMode.car);
+      final decision = tracker.resolve(
+        _position(0, 0, headingDegrees: 270),
+        routeHeadingDegrees: 90,
+        distanceFromRouteMeters: 2,
+      );
+
+      expect(decision.displayHeadingDegrees, 270);
+      expect(decision.angularDifferenceDegrees, 180);
+      expect(decision.source, NavigationHeadingSource.gps);
     });
   });
 
@@ -255,15 +333,35 @@ void main() {
       final route = _route();
       final planner = GuidanceAnnouncementPlanner();
 
+      for (final remaining in [400.0, 20.0]) {
+        expect(
+          planner.replayCurrent(
+            stepIndex: 2,
+            distanceToManeuverMeters: remaining,
+            remainingDistanceMeters: remaining,
+            route: route,
+            mode: TravelMode.car,
+          ),
+          'Continuez vers votre destination',
+        );
+      }
+    });
+
+    test('does not announce arrival before GPS confirmation', () {
+      final route = _route();
+      final planner = GuidanceAnnouncementPlanner();
+
       expect(
-        planner.replayCurrent(
-          stepIndex: 2,
-          distanceToManeuverMeters: 400,
-          remainingDistanceMeters: 400,
+        planner.next(
+          update: _guidance(
+            distance: 20,
+            currentStepIndex: 1,
+            upcomingStepIndex: 2,
+          ),
           route: route,
           mode: TravelMode.car,
         ),
-        'Continuez vers votre destination',
+        isNull,
       );
     });
 
@@ -316,6 +414,7 @@ NavigationPosition _position(
   double longitude, {
   double headingDegrees = 90,
   double headingAccuracyDegrees = 5,
+  double speedMetersPerSecond = 5,
   DateTime? timestamp,
 }) {
   return NavigationPosition(
@@ -323,7 +422,7 @@ NavigationPosition _position(
     accuracyMeters: 5,
     headingDegrees: headingDegrees,
     headingAccuracyDegrees: headingAccuracyDegrees,
-    speedMetersPerSecond: 5,
+    speedMetersPerSecond: speedMetersPerSecond,
     timestamp: timestamp ?? DateTime(2026),
   );
 }
@@ -405,6 +504,38 @@ RoutePlan _shortDepartureRoute() {
         roadName: '',
         distanceMeters: 0,
         points: [LatLng(0, 0.01), LatLng(0, 0.01)],
+      ),
+    ],
+  );
+}
+
+RoutePlan _routeWithInconsistentStepDistances() {
+  return const RoutePlan(
+    points: [LatLng(0, 0), LatLng(0, 0.003), LatLng(0, 0.01)],
+    distanceMeters: 1000,
+    durationSeconds: 500,
+    resourceVersion: 'geometry-anchors',
+    steps: [
+      RouteStep(
+        type: 'depart',
+        modifier: 'straight',
+        roadName: 'RUE A',
+        distanceMeters: 800,
+        points: [LatLng(0, 0), LatLng(0, 0.003)],
+      ),
+      RouteStep(
+        type: 'turn',
+        modifier: 'right',
+        roadName: 'RUE B',
+        distanceMeters: 200,
+        points: [LatLng(0, 0.003), LatLng(0, 0.01)],
+      ),
+      RouteStep(
+        type: 'arrive',
+        modifier: 'straight',
+        roadName: '',
+        distanceMeters: 0,
+        points: [LatLng(0, 0.01)],
       ),
     ],
   );
