@@ -122,6 +122,9 @@ void main() {
       ('new name', 'straight', 'Continuez sur RUE TEST'),
       ('future maneuver', 'right', 'Tournez à droite sur RUE TEST'),
       ('arrive', 'left', 'Vous êtes arrivé sur votre gauche'),
+      ('TURN', 'SHARP-RIGHT', 'Tournez franchement à droite sur RUE TEST'),
+      ('turn', 'u_turn', 'Faites demi-tour sur RUE TEST'),
+      ('fork', 'keep-left', 'À l’embranchement, tenez la gauche sur RUE TEST'),
     ];
 
     for (final (type, modifier, instruction) in cases) {

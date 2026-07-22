@@ -43,6 +43,56 @@ void main() {
     );
   });
 
+  test('diagnostics expose heading decisions without coordinates', () {
+    final session = _navigationSession(headingDegrees: 90).copyWith(
+      currentStepIndex: 1,
+      distanceToManeuverMeters: 42,
+      signalState: NavigationSignalState.reliable,
+      headingDecision: const NavigationHeadingDecision(
+        gpsHeadingDegrees: 82,
+        movementHeadingDegrees: 88,
+        routeHeadingDegrees: 90,
+        displayHeadingDegrees: 90,
+        source: NavigationHeadingSource.routeAligned,
+        angularDifferenceDegrees: 2,
+      ),
+    );
+
+    final text = buildGuidanceDiagnosticsText(session);
+
+    expect(text, contains('GPS 82°'));
+    expect(text, contains('retenu 90° (route alignée)'));
+    expect(text, contains('Manœuvre 42 m'));
+    expect(text, isNot(contains('48.85')));
+    expect(text, isNot(contains('2.35')));
+  });
+
+  testWidgets('toggles coordinate-free diagnostics with the build flag', (
+    tester,
+  ) async {
+    const diagnosticsEnabled = bool.fromEnvironment('GUIDANCE_DIAGNOSTICS');
+    final harness = TestAppHarness();
+    addTearDown(harness.dispose);
+
+    await tester.pumpWidget(
+      MaterialApp(
+        home: NavigationPage(
+          destination: parisDestination,
+          mode: TravelMode.car,
+          dependencies: harness.dependencies,
+        ),
+      ),
+    );
+    for (var frame = 0; frame < 5; frame++) {
+      await tester.pump(const Duration(milliseconds: 50));
+    }
+
+    expect(
+      find.byKey(const Key('guidance-diagnostics')),
+      diagnosticsEnabled ? findsOneWidget : findsNothing,
+    );
+  });
+
   test('uses maneuver-specific navigation icons', () {
     const roundabout = RouteStep(
       type: 'roundabout',
@@ -116,6 +166,37 @@ void main() {
     await tester.pump();
 
     expect(tester.takeException(), isNull);
+    final marker = tester.widget<Transform>(
+      find.byKey(const Key('navigation-user-marker')),
+    );
+    expect(marker.transform.storage[0], closeTo(1, 0.0001));
+    expect(marker.transform.storage[1], closeTo(0, 0.0001));
+  });
+
+  testWidgets('rotates the marker against the map in free view', (
+    tester,
+  ) async {
+    final session = _navigationSession(
+      headingDegrees: 90,
+    ).copyWith(followingUser: false);
+
+    await tester.pumpWidget(
+      MaterialApp(
+        home: Scaffold(
+          body: buildLiveNavigationMapForTest(
+            session,
+            initialMapRotationDegrees: 30,
+          ),
+        ),
+      ),
+    );
+    await tester.pump();
+
+    final marker = tester.widget<Transform>(
+      find.byKey(const Key('navigation-user-marker')),
+    );
+    expect(marker.transform.storage[0], closeTo(0.5, 0.01));
+    expect(marker.transform.storage[1], closeTo(0.866, 0.01));
   });
 
   testWidgets('shows a message when external guidance fails', (tester) async {
@@ -204,7 +285,7 @@ void main() {
     await tester.pump();
 
     expect(find.text('Guidage indisponible'), findsNothing);
-    expect(find.text('500 m'), findsOneWidget);
+    expect(_initialManeuverDistance(), findsOneWidget);
     expect(harness.api.routeCalls, 2);
   });
 
@@ -231,7 +312,7 @@ void main() {
     }
 
     final instructionCard = find.ancestor(
-      of: find.text('500 m'),
+      of: _initialManeuverDistance(),
       matching: find.byType(Card),
     );
     final metricsCard = find.ancestor(
@@ -296,3 +377,10 @@ NavigationSession _navigationSession({required double headingDegrees}) {
     displayHeadingDegrees: headingDegrees,
   );
 }
+
+Finder _initialManeuverDistance() => find.byWidgetPredicate(
+  (widget) =>
+      widget is Text &&
+      widget.data != null &&
+      RegExp(r'^49\d m$').hasMatch(widget.data!),
+);

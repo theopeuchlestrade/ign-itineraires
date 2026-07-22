@@ -74,9 +74,10 @@ class RouteDeviationPolicy {
   int _offRouteFixes = 0;
   int _reverseDirectionFixes = 0;
   int _arrivalFixes = 0;
+  int _preciseArrivalFixes = 0;
   DateTime? _offRouteSince;
 
-  bool get hasArrived => _arrivalFixes >= 2;
+  bool get hasArrived => _preciseArrivalFixes >= 2 || _arrivalFixes >= 3;
 
   void update({
     required GuidanceUpdate update,
@@ -96,9 +97,16 @@ class RouteDeviationPolicy {
     _reverseDirectionFixes = update.reverseDirection
         ? _reverseDirectionFixes + 1
         : 0;
-    _arrivalFixes = update.arrived && position.accuracyMeters <= 20
-        ? _arrivalFixes + 1
-        : 0;
+    final guidanceAccuracy = mode == TravelMode.pedestrian ? 25.0 : 35.0;
+    if (!update.arrived || position.accuracyMeters > guidanceAccuracy) {
+      _arrivalFixes = 0;
+      _preciseArrivalFixes = 0;
+    } else {
+      _arrivalFixes++;
+      _preciseArrivalFixes = position.accuracyMeters <= 20
+          ? _preciseArrivalFixes + 1
+          : 0;
+    }
   }
 
   bool shouldReroute(DateTime timestamp) {
@@ -118,6 +126,7 @@ class RouteDeviationPolicy {
     _offRouteFixes = 0;
     _reverseDirectionFixes = 0;
     _arrivalFixes = 0;
+    _preciseArrivalFixes = 0;
     _offRouteSince = null;
   }
 }

@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'dart:math' as math;
 
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_map/flutter_map.dart';
 import 'package:ign_itineraires/src/features/routing/data/navigation_launcher.dart';
@@ -13,6 +14,9 @@ import 'package:ign_itineraires/src/features/routing/presentation/widgets/ign_ro
 import 'package:ign_itineraires/src/theme/app_theme.dart';
 
 part 'widgets/navigation_panels.dart';
+
+const _guidanceDiagnosticsEnabled =
+    !kReleaseMode && bool.fromEnvironment('GUIDANCE_DIAGNOSTICS');
 
 class NavigationPage extends StatefulWidget {
   const NavigationPage({
@@ -40,11 +44,13 @@ class NavigationPage extends StatefulWidget {
 Widget buildLiveNavigationMapForTest(
   NavigationSession session, {
   TileProvider? tileProvider,
+  double? initialMapRotationDegrees,
 }) {
   return _LiveNavigationMap(
     session: session,
     onFollowingChanged: (_) {},
     tileProvider: tileProvider,
+    initialMapRotationDegrees: initialMapRotationDegrees,
   );
 }
 
@@ -70,24 +76,48 @@ double navigationMarkerRotationDegrees({
 }
 
 @visibleForTesting
+String buildGuidanceDiagnosticsText(NavigationSession session) {
+  final decision = session.headingDecision;
+  String heading(double? value) => value == null ? '—' : '${value.round()}°';
+  final source = switch (decision?.source) {
+    NavigationHeadingSource.routeAligned => 'route alignée',
+    NavigationHeadingSource.movement => 'déplacement',
+    NavigationHeadingSource.gps => 'GPS',
+    NavigationHeadingSource.previous => 'cap précédent',
+    NavigationHeadingSource.routeFallback => 'route (secours)',
+    null => 'indisponible',
+  };
+  return [
+    'GPS ${heading(decision?.gpsHeadingDegrees)} · déplacement '
+        '${heading(decision?.movementHeadingDegrees)}',
+    'Route ${heading(decision?.routeHeadingDegrees)} · retenu '
+        '${heading(decision?.displayHeadingDegrees)} ($source)',
+    'Écart ${heading(decision?.angularDifferenceDegrees)} · étape '
+        '${session.currentStepIndex + 1}/${session.route?.steps.length ?? 0}',
+    'Manœuvre ${session.formattedDistanceToManeuver} · '
+        'GPS ${session.signalState.name}',
+  ].join('\n');
+}
+
+@visibleForTesting
 IconData navigationInstructionIcon(RouteStep? step) {
   if (step == null) return Icons.navigation_rounded;
   if (step.normalizedType == 'arrive') return Icons.flag_rounded;
   if (step.isRoundabout) return Icons.roundabout_right_rounded;
   if (step.normalizedType == 'merge') return Icons.merge_rounded;
   if (step.normalizedType == 'fork') {
-    return step.modifier.contains('left')
+    return step.normalizedModifier.contains('left')
         ? Icons.fork_left_rounded
         : Icons.fork_right_rounded;
   }
   if (step.normalizedType == 'ramp' ||
       step.normalizedType == 'on ramp' ||
       step.normalizedType == 'off ramp') {
-    return step.modifier.contains('left')
+    return step.normalizedModifier.contains('left')
         ? Icons.ramp_left_rounded
         : Icons.ramp_right_rounded;
   }
-  return switch (step.modifier) {
+  return switch (step.normalizedModifier) {
     'slight left' => Icons.turn_slight_left_rounded,
     'slight right' => Icons.turn_slight_right_rounded,
     'sharp left' => Icons.turn_sharp_left_rounded,
@@ -306,6 +336,29 @@ class _NavigationPageState extends State<NavigationPage>
                       onStop: _confirmStop,
                     ),
                   ),
+                  if (_guidanceDiagnosticsEnabled)
+                    Align(
+                      alignment: Alignment.centerLeft,
+                      child: IgnorePointer(
+                        child: Card(
+                          key: const Key('guidance-diagnostics'),
+                          color: Colors.black.withValues(alpha: 0.78),
+                          child: Padding(
+                            padding: const EdgeInsets.all(10),
+                            child: Text(
+                              buildGuidanceDiagnosticsText(session),
+                              style: Theme.of(context).textTheme.bodySmall
+                                  ?.copyWith(
+                                    color: Colors.white,
+                                    fontFeatures: const [
+                                      FontFeature.tabularFigures(),
+                                    ],
+                                  ),
+                            ),
+                          ),
+                        ),
+                      ),
+                    ),
                 ],
               );
             },
@@ -434,11 +487,13 @@ class _LiveNavigationMap extends StatefulWidget {
     required this.session,
     required this.onFollowingChanged,
     this.tileProvider,
+    this.initialMapRotationDegrees,
   });
 
   final NavigationSession session;
   final ValueChanged<bool> onFollowingChanged;
   final TileProvider? tileProvider;
+  final double? initialMapRotationDegrees;
 
   @override
   State<_LiveNavigationMap> createState() => _LiveNavigationMapState();
@@ -452,7 +507,9 @@ class _LiveNavigationMapState extends State<_LiveNavigationMap> {
   @override
   void initState() {
     super.initState();
-    _mapRotation = widget.session.displayHeadingDegrees;
+    _mapRotation =
+        widget.initialMapRotationDegrees ??
+        widget.session.displayHeadingDegrees;
   }
 
   @override
@@ -503,13 +560,13 @@ class _LiveNavigationMapState extends State<_LiveNavigationMap> {
         options: MapOptions(
           initialCenter: position,
           initialZoom: 17,
-          initialRotation: session.displayHeadingDegrees,
+          initialRotation: _mapRotation,
           minZoom: 3,
           maxZoom: 19,
           interactionOptions: routeMapInteractionOptions(),
           onMapReady: () {
             _ready = true;
-            _follow();
+            if (session.followingUser) _follow();
           },
           onMapEvent: (event) {
             if ((_mapRotation - event.camera.rotation).abs() > 0.01 &&
@@ -571,6 +628,7 @@ class _LiveNavigationMapState extends State<_LiveNavigationMap> {
                 width: 54,
                 height: 54,
                 child: Transform.rotate(
+                  key: const Key('navigation-user-marker'),
                   angle:
                       navigationMarkerRotationDegrees(
                         followingUser: session.followingUser,

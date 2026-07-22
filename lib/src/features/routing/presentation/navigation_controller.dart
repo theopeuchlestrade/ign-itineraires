@@ -148,6 +148,11 @@ class NavigationController extends ChangeNotifier {
     _lastFixReceivedAt = _now();
     final update = _engine!.update(position);
     _progressMeters = update.progressMeters;
+    final headingDecision = _headingTracker.resolve(
+      position,
+      routeHeadingDegrees: update.routeHeadingDegrees,
+      distanceFromRouteMeters: update.distanceFromRouteMeters,
+    );
     _setSession(
       session.copyWith(
         status: NavigationStatus.active,
@@ -161,10 +166,8 @@ class NavigationController extends ChangeNotifier {
         remainingDurationSeconds: update.remainingDurationSeconds,
         distanceFromRouteMeters: update.distanceFromRouteMeters,
         signalState: NavigationSignalState.reliable,
-        displayHeadingDegrees: _headingTracker.resolve(
-          position,
-          routeHeadingDegrees: update.routeHeadingDegrees,
-        ),
+        displayHeadingDegrees: headingDecision.displayHeadingDegrees,
+        headingDecision: headingDecision,
         message: null,
       ),
     );
@@ -267,6 +270,11 @@ class NavigationController extends ChangeNotifier {
     _lastAcceptedPosition = position;
 
     _deviationPolicy.update(update: update, position: position);
+    final headingDecision = _headingTracker.resolve(
+      position,
+      routeHeadingDegrees: update.routeHeadingDegrees,
+      distanceFromRouteMeters: update.distanceFromRouteMeters,
+    );
 
     _setSession(
       session.copyWith(
@@ -280,10 +288,8 @@ class NavigationController extends ChangeNotifier {
         remainingDurationSeconds: update.remainingDurationSeconds,
         distanceFromRouteMeters: update.distanceFromRouteMeters,
         signalState: NavigationSignalState.reliable,
-        displayHeadingDegrees: _headingTracker.resolve(
-          position,
-          routeHeadingDegrees: update.routeHeadingDegrees,
-        ),
+        displayHeadingDegrees: headingDecision.displayHeadingDegrees,
+        headingDecision: headingDecision,
         message: null,
       ),
     );
@@ -483,8 +489,8 @@ class NavigationController extends ChangeNotifier {
   Future<void> _arrive(int operation) async {
     if (!_canContinue(operation)) return;
     _operationGeneration++;
-    await _stopForegroundTracking();
-    await _stopSpeechAndWakeLock();
+    final shouldAnnounce =
+        session.voiceEnabled && !session.speechRetryAvailable;
     _setSession(
       session.copyWith(
         status: NavigationStatus.arrived,
@@ -493,7 +499,9 @@ class NavigationController extends ChangeNotifier {
         message: null,
       ),
     );
-    if (session.voiceEnabled && !session.speechRetryAvailable) {
+    await _stopForegroundTracking();
+    await _stopSpeechAndWakeLock();
+    if (shouldAnnounce) {
       await _speak('Vous êtes arrivé à destination.');
     }
   }

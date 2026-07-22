@@ -83,18 +83,31 @@ Chrome validates planning, persistence, failure states, and guidance startup.
 The Flutter Web integration runner can stall when it injects gestures into an
 active `FlutterMap`; continuous navigation interactions therefore run on
 Android and iOS and are also covered with deterministic controller tests.
-Synthetic trace replay additionally verifies monotonic and bounded progress
-through GPS jitter, parallel-road offsets, backward fixes, and implausible
-forward jumps without committing real user traces.
+Synthetic trace replay additionally verifies monotonic and bounded progress,
+maneuver order and distance, announcement uniqueness, heading decisions,
+rerouting, arrival, and resource release. Scenarios cover nearby turns, forks,
+ramps, merges, roundabouts, crossings, parallel roads, U-turns, unavailable
+headings, stationary fixes, GPS noise, signal loss, and delayed progress. The
+scenario oracle declares expected outcomes independently from the engine. Only
+synthetic traces around public places may be committed.
 
 ### Nightly Validation
 
 The scheduled workflow executes:
 
 - Real autocomplete, route, and WMTS contracts on `data.geopf.fr`;
-- A car trip in Paris and a pedestrian trip in La Réunion;
+- Car and pedestrian trips in Paris, an urban roundabout, a route with ramps,
+  and a pedestrian trip in La Réunion;
 - Integration flow on Android Emulator API 24;
+- Integration flow on an iOS Simulator;
 - Scan for known vulnerabilities in `pubspec.lock`.
+
+The live guidance tests obtain the current route from Géoplateforme, validate
+the returned maneuver vocabulary, derive a synthetic trace from that geometry,
+and exercise the engine, controller, and simulated voice. A separate
+deterministic replay drives the same controller through the marker and arrival
+UI on Android and iOS. Emulator reports contain scenario and invariant data
+only, never coordinates.
 
 To manually trigger contracts:
 
@@ -152,6 +165,35 @@ physically certified in the release checklist.
 11. Test stale fixes, approximate permission, stationary heading, GPS jumps,
     parallel roads, crossings, a U-turn, signal loss, and recovery after two
     reliable fixes.
+12. Confirm arrival with two consecutive fixes at 20m accuracy or better, or
+    three acceptable fixes (35m car, 25m pedestrian). Also verify the
+    stationary 10m fallback when route progress is delayed.
+
+### Physical Guidance Diagnostics
+
+The diagnostics overlay is available only in debug/profile builds and never in
+release builds. It shows GPS heading, movement heading, route tangent, selected
+heading and source, angular difference, step, maneuver distance, and GPS state.
+It does not show coordinates, persist data, or send additional network traffic.
+
+```sh
+flutter run --profile \
+  --dart-define=GUIDANCE_DIAGNOSTICS=true \
+  -d <device-id>
+```
+
+Perform the following on one recent iPhone and one recent Android phone:
+
+1. One urban pedestrian route and one open-area pedestrian route.
+2. One urban car route and one fast-road route, operated by a passenger.
+3. One deliberate detour that triggers a recalculation.
+4. One arrival with the device stopped at the public destination.
+
+Accept only when no instruction is skipped or repeated, the marker follows the
+road, arrival occurs within three reliable positions, and no GPS, voice, or
+wake-lock activity continues afterward. Record only device model, OS version,
+result, and an anonymized defect description. Never save screenshots or logs
+that disclose a physical trace or personal address.
 
 ### Permissions and Failures
 

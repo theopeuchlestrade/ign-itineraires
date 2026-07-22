@@ -57,9 +57,26 @@ void main() {
     expect(controller.session.status, NavigationStatus.arrived);
     expect(controller.session.remainingDistanceMeters, 0);
     expect(harness.wakeLock.enabled, isFalse);
+    expect(harness.location.activeWatchers, 0);
+    expect(harness.speech.stopCalls, greaterThanOrEqualTo(1));
     expect(
       harness.speech.messages,
       contains('Vous êtes arrivé à destination.'),
+    );
+    final arrivalAnnouncements = harness.speech.messages
+        .where((message) => message == 'Vous êtes arrivé à destination.')
+        .length;
+
+    harness.location.emit(routeMidpointPosition);
+    await Future<void>.delayed(Duration.zero);
+
+    expect(controller.session.status, NavigationStatus.arrived);
+    expect(harness.location.activeWatchers, 0);
+    expect(
+      harness.speech.messages
+          .where((message) => message == 'Vous êtes arrivé à destination.')
+          .length,
+      arrivalAnnouncements,
     );
   });
 

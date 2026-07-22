@@ -27,7 +27,9 @@ Duplicate this document for each version and keep the results with release notes
 - [ ] Android build
 - [ ] iOS Simulator build
 - [ ] Android API 24 nightly
-- [ ] Paris and La Réunion contracts within the last 24 hours
+- [ ] iOS Simulator nightly guidance replay
+- [ ] Paris car/pedestrian, roundabout, ramps, and La Réunion contracts within
+      the last 24 hours
 - [ ] OSV scan without blocking vulnerabilities
 
 ## Documentation
@@ -65,9 +67,12 @@ Duplicate this document for each version and keep the results with release notes
 - Android Version:
 
 - [ ] Permissions accepted, denied, and permanently denied
-- [ ] Real pedestrian trip
-- [ ] Car trip tested by a passenger
+- [ ] Urban and open-area pedestrian trips
+- [ ] Urban and fast-road car trips tested by a passenger
 - [ ] Recalculation after simulated off-route
+- [ ] Diagnostic overlay: instructions unique, marker follows route, arrival in
+      at most three reliable positions
+- [ ] No GPS, voice, or wake lock after arrival
 - [ ] French voice and mute button
 - [ ] Screen kept active then released
 - [ ] Pause/resume after backgrounding
@@ -79,9 +84,12 @@ Duplicate this document for each version and keep the results with release notes
 - iOS Version:
 
 - [ ] Permissions accepted, denied, and permanently denied
-- [ ] Real pedestrian trip
-- [ ] Car trip tested by a passenger
+- [ ] Urban and open-area pedestrian trips
+- [ ] Urban and fast-road car trips tested by a passenger
 - [ ] Recalculation after simulated off-route
+- [ ] Diagnostic overlay: instructions unique, marker follows route, arrival in
+      at most three reliable positions
+- [ ] No GPS, voice, or wake lock after arrival
 - [ ] French voice and mute button
 - [ ] Screen kept active then released
 - [ ] Pause/resume after backgrounding
@@ -105,6 +113,7 @@ Duplicate this document for each version and keep the results with release notes
 - [ ] History disabled by default and erasable
 - [ ] 30-minute guidance session without memory leak or overheating
 - [ ] No addresses or personal traces in logs and screenshots
+- [ ] Physical-test notes contain only device, OS, result, and anonymized defect
 
 ## Decision
 
