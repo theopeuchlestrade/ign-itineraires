@@ -132,7 +132,7 @@ class NavigationHeadingTracker {
     final movementHeading = _movementHeading(position);
     final previousHeading = _lastObservedHeadingDegrees;
     final gpsHeading = _reliablePlatformHeading(position);
-    final observed = movementHeading ?? gpsHeading ?? previousHeading;
+    final observed = gpsHeading ?? movementHeading ?? previousHeading;
     final normalizedRoute = _normalizeHeading(routeHeadingDegrees);
     final difference = observed == null
         ? 0.0
@@ -153,10 +153,10 @@ class NavigationHeadingTracker {
         source = NavigationHeadingSource.routeAligned;
       } else {
         display = _lastObservedHeadingDegrees!;
-        source = movementHeading != null
-            ? NavigationHeadingSource.movement
-            : gpsHeading != null
+        source = gpsHeading != null
             ? NavigationHeadingSource.gps
+            : movementHeading != null
+            ? NavigationHeadingSource.movement
             : NavigationHeadingSource.previous;
       }
     }

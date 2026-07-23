@@ -80,6 +80,7 @@ void main() {
       });
 
       expect(step.exitNumber, 2);
+      expect(step.exitOrdinal, '2e');
       expect(step.instruction, 'Au rond-point, prenez la 2e sortie');
     });
 

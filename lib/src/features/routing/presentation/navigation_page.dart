@@ -12,6 +12,7 @@ import 'package:ign_itineraires/src/features/routing/presentation/navigation_con
 import 'package:ign_itineraires/src/features/routing/presentation/widgets/adaptive_map_interaction.dart';
 import 'package:ign_itineraires/src/features/routing/presentation/widgets/ign_route_map.dart';
 import 'package:ign_itineraires/src/theme/app_theme.dart';
+import 'package:latlong2/latlong.dart' show Distance, LatLng;
 
 part 'widgets/navigation_panels.dart';
 
@@ -72,7 +73,67 @@ double navigationMarkerRotationDegrees({
   required double headingDegrees,
   required double mapRotationDegrees,
 }) {
-  return followingUser ? 0 : headingDegrees - mapRotationDegrees;
+  if (followingUser) return 0;
+  return _normalizeSignedDegrees(headingDegrees + mapRotationDegrees);
+}
+
+@visibleForTesting
+double navigationCameraRotationDegrees(double headingDegrees) {
+  return -_normalizeDegrees(headingDegrees);
+}
+
+@visibleForTesting
+double roundaboutExitAngleDegrees(RouteStep step) {
+  final geometryAngle = _roundaboutGeometryAngle(step.points);
+  if (geometryAngle != null) return geometryAngle;
+  return switch (step.modifier) {
+    'slight right' => 45,
+    'right' => 90,
+    'sharp right' => 135,
+    'slight left' => -45,
+    'left' => -90,
+    'sharp left' => -135,
+    'uturn' => 180,
+    _ => 0,
+  };
+}
+
+double _normalizeDegrees(double degrees) => (degrees % 360 + 360) % 360;
+
+double _normalizeSignedDegrees(double degrees) {
+  final normalized = _normalizeDegrees(degrees);
+  return normalized > 180 ? normalized - 360 : normalized;
+}
+
+double? _roundaboutGeometryAngle(List<LatLng> points) {
+  if (points.length < 3) return null;
+  const distance = Distance();
+  const minimumSegmentMeters = 5.0;
+  final first = points.first;
+  final last = points.last;
+
+  LatLng? entryReference;
+  for (final point in points.skip(1)) {
+    if (distance(first, point) >= minimumSegmentMeters) {
+      entryReference = point;
+      break;
+    }
+  }
+
+  LatLng? exitReference;
+  for (var index = points.length - 2; index >= 0; index--) {
+    final point = points[index];
+    if (distance(point, last) >= minimumSegmentMeters) {
+      exitReference = point;
+      break;
+    }
+  }
+
+  if (entryReference == null || exitReference == null) return null;
+  final entryBearing = distance.bearing(first, entryReference);
+  final exitBearing = distance.bearing(exitReference, last);
+  if (!entryBearing.isFinite || !exitBearing.isFinite) return null;
+  return _normalizeSignedDegrees(exitBearing - entryBearing);
 }
 
 @visibleForTesting
@@ -132,6 +193,9 @@ IconData navigationInstructionIcon(RouteStep? step) {
 class _NavigationPageState extends State<NavigationPage>
     with WidgetsBindingObserver {
   late final NavigationController _controller;
+  final _liveMapKey = GlobalKey<_LiveNavigationMapState>();
+  bool _allowPop = false;
+  bool _stopDialogOpen = false;
   ExternalNavigationGateway get _launcher =>
       widget.dependencies.externalNavigation;
 
@@ -174,44 +238,50 @@ class _NavigationPageState extends State<NavigationPage>
       animation: _controller,
       builder: (context, _) {
         final session = _controller.session;
-        return Scaffold(
-          appBar: AppBar(
-            leading: IconButton(
-              tooltip: 'Arrêter le guidage',
-              onPressed: _confirmStop,
-              icon: const Icon(Icons.close),
-            ),
-            title: Row(
-              children: [
-                const AppLogoMark(size: 32),
-                const SizedBox(width: 10),
-                Expanded(
-                  child: Text(
-                    session.status == NavigationStatus.rerouting
-                        ? 'Recalcul en cours…'
-                        : 'Guidage ${widget.mode.label.toLowerCase()}',
+        final canLeaveWithoutConfirmation =
+            _allowPop ||
+            session.status == NavigationStatus.error ||
+            session.status == NavigationStatus.stopped ||
+            session.status == NavigationStatus.arrived;
+        return PopScope(
+          canPop: canLeaveWithoutConfirmation,
+          onPopInvokedWithResult: (didPop, _) {
+            if (!didPop) unawaited(_confirmStop());
+          },
+          child: Scaffold(
+            appBar: AppBar(
+              automaticallyImplyLeading: false,
+              title: Row(
+                children: [
+                  const AppLogoMark(size: 32),
+                  const SizedBox(width: 10),
+                  Expanded(
+                    child: Text('Guidage ${widget.mode.label.toLowerCase()}'),
+                  ),
+                ],
+              ),
+              actions: [
+                SizedBox.square(
+                  dimension: 56,
+                  child: IconButton(
+                    tooltip: session.voiceEnabled
+                        ? 'Couper les instructions vocales'
+                        : 'Activer les instructions vocales',
+                    onPressed: _controller.voiceMutationInProgress
+                        ? null
+                        : _controller.toggleVoice,
+                    icon: Icon(
+                      session.voiceEnabled
+                          ? Icons.volume_up_rounded
+                          : Icons.volume_off_rounded,
+                    ),
                   ),
                 ),
+                const SizedBox(width: 4),
               ],
             ),
-            actions: [
-              IconButton(
-                tooltip: session.voiceEnabled
-                    ? 'Couper les instructions vocales'
-                    : 'Activer les instructions vocales',
-                onPressed: _controller.voiceMutationInProgress
-                    ? null
-                    : _controller.toggleVoice,
-                icon: Icon(
-                  session.voiceEnabled
-                      ? Icons.volume_up_rounded
-                      : Icons.volume_off_rounded,
-                ),
-              ),
-              const SizedBox(width: 8),
-            ],
+            body: _buildBody(session),
           ),
-          body: _buildBody(session),
         );
       },
     );
@@ -273,133 +343,119 @@ class _NavigationPageState extends State<NavigationPage>
       );
     }
 
-    return Stack(
-      children: [
-        Positioned.fill(
-          child: _LiveNavigationMap(
-            session: session,
-            onFollowingChanged: _controller.setFollowingUser,
-            tileProvider: widget.dependencies.tileProvider,
+    return LayoutBuilder(
+      builder: (context, pageConstraints) => Stack(
+        children: [
+          Positioned.fill(
+            child: _LiveNavigationMap(
+              key: _liveMapKey,
+              session: session,
+              onFollowingChanged: _controller.setFollowingUser,
+              tileProvider: widget.dependencies.tileProvider,
+            ),
           ),
-        ),
-        SafeArea(
-          minimum: const EdgeInsets.all(12),
-          child: LayoutBuilder(
-            builder: (context, constraints) {
-              final compact =
-                  constraints.maxHeight < 600 ||
-                  MediaQuery.textScalerOf(context).scale(1) >= 1.5;
-              return Stack(
-                children: [
-                  Align(
-                    alignment: Alignment.topCenter,
-                    child: ConstrainedBox(
-                      constraints: BoxConstraints(
-                        maxHeight: constraints.maxHeight * 0.52,
-                      ),
-                      child: SingleChildScrollView(
-                        child: Column(
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            _InstructionBanner(session: session),
-                            const SizedBox(height: 8),
-                            Align(
-                              alignment: Alignment.centerRight,
-                              child: _GpsSignalBadge(session: session),
-                            ),
-                            if (session.message != null) ...[
-                              const SizedBox(height: 8),
-                              _NavigationMessage(message: session.message!),
-                            ],
-                            if (session.speechRetryAvailable) ...[
-                              const SizedBox(height: 8),
-                              _NavigationMessage(
-                                message:
-                                    'La voix n’a pas démarré ; le guidage visuel continue.',
-                                actionLabel: 'Réessayer la voix',
-                                onAction: _controller.retrySpeech,
-                              ),
-                            ],
-                          ],
-                        ),
-                      ),
-                    ),
-                  ),
-                  Align(
-                    alignment: Alignment.bottomCenter,
-                    child: _NavigationControls(
-                      session: session,
-                      compact: compact,
-                      now: widget.now ?? DateTime.now,
-                      onRecenter: () => _controller.setFollowingUser(true),
-                      onExternal: _openExternal,
-                      onStop: _confirmStop,
-                    ),
-                  ),
-                  if (_guidanceDiagnosticsEnabled)
+          SafeArea(
+            minimum: const EdgeInsets.all(12),
+            child: LayoutBuilder(
+              builder: (context, constraints) {
+                final compact =
+                    constraints.maxHeight < 600 ||
+                    MediaQuery.textScalerOf(context).scale(1) >= 1.5;
+                return Stack(
+                  children: [
                     Align(
-                      alignment: Alignment.centerLeft,
-                      child: IgnorePointer(
-                        child: Card(
-                          key: const Key('guidance-diagnostics'),
-                          color: Colors.black.withValues(alpha: 0.78),
-                          child: Padding(
-                            padding: const EdgeInsets.all(10),
-                            child: Text(
-                              buildGuidanceDiagnosticsText(session),
-                              style: Theme.of(context).textTheme.bodySmall
-                                  ?.copyWith(
-                                    color: Colors.white,
-                                    fontFeatures: const [
-                                      FontFeature.tabularFigures(),
-                                    ],
-                                  ),
-                            ),
+                      alignment: Alignment.topCenter,
+                      child: ConstrainedBox(
+                        constraints: BoxConstraints(
+                          maxHeight: constraints.maxHeight * 0.52,
+                        ),
+                        child: SingleChildScrollView(
+                          child: Column(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              _InstructionBanner(session: session),
+                              if (session.message == null) ...[
+                                const SizedBox(height: 8),
+                                Align(
+                                  alignment: Alignment.centerRight,
+                                  child: _GpsSignalBadge(session: session),
+                                ),
+                              ],
+                              if (session.message != null) ...[
+                                const SizedBox(height: 8),
+                                _NavigationMessage(message: session.message!),
+                              ],
+                              if (session.speechRetryAvailable) ...[
+                                const SizedBox(height: 8),
+                                _NavigationMessage(
+                                  message:
+                                      'La voix n’a pas démarré ; le guidage visuel continue.',
+                                  actionLabel: 'Réessayer la voix',
+                                  onAction: _controller.retrySpeech,
+                                ),
+                              ],
+                            ],
                           ),
                         ),
                       ),
                     ),
-                ],
-              );
-            },
+                    Align(
+                      alignment: Alignment.bottomCenter,
+                      child: ConstrainedBox(
+                        constraints: const BoxConstraints(maxWidth: 560),
+                        child: _NavigationControls(
+                          session: session,
+                          compact: compact,
+                          now: widget.now ?? DateTime.now,
+                          onExternal: _openExternal,
+                          onStop: _confirmStop,
+                        ),
+                      ),
+                    ),
+                  ],
+                );
+              },
+            ),
           ),
-        ),
-        if (session.status == NavigationStatus.arrived)
-          Positioned.fill(
-            child: ColoredBox(
-              color: Colors.black54,
+          Positioned(
+            right: 12,
+            bottom: _mapControlsBottom(context, pageConstraints.maxWidth),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                FloatingActionButton(
+                  heroTag: 'navigation-overview',
+                  tooltip: 'Voir tout le trajet',
+                  onPressed: () => _liveMapKey.currentState?._overview(),
+                  child: const Icon(Icons.route),
+                ),
+                const SizedBox(height: 8),
+                if (!session.followingUser)
+                  FloatingActionButton(
+                    heroTag: 'navigation-recenter',
+                    tooltip: 'Recentrer sur ma position',
+                    onPressed: () => _liveMapKey.currentState?._recenter(),
+                    child: const Icon(Icons.my_location),
+                  ),
+              ],
+            ),
+          ),
+          if (_guidanceDiagnosticsEnabled)
+            Align(
+              alignment: Alignment.centerLeft,
               child: SafeArea(
-                child: SingleChildScrollView(
-                  padding: const EdgeInsets.all(28),
-                  child: Center(
-                    child: Card(
-                      margin: EdgeInsets.zero,
-                      child: Padding(
-                        padding: const EdgeInsets.all(28),
-                        child: Column(
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            const Icon(
-                              Icons.flag_circle_rounded,
-                              color: AppPalette.primary,
-                              size: 64,
-                            ),
-                            const SizedBox(height: 16),
-                            Text(
-                              'Vous êtes arrivé',
-                              style: Theme.of(context).textTheme.headlineSmall,
-                            ),
-                            const SizedBox(height: 8),
-                            Text(
-                              widget.destination.label,
-                              textAlign: TextAlign.center,
-                            ),
-                            const SizedBox(height: 22),
-                            FilledButton(
-                              onPressed: () => Navigator.pop(context),
-                              child: const Text('Terminer'),
-                            ),
-                          ],
+                minimum: const EdgeInsets.all(12),
+                child: IgnorePointer(
+                  child: Card(
+                    key: const Key('guidance-diagnostics'),
+                    color: Colors.black.withValues(alpha: 0.78),
+                    child: Padding(
+                      padding: const EdgeInsets.all(10),
+                      child: Text(
+                        buildGuidanceDiagnosticsText(session),
+                        style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                          color: Colors.white,
+                          fontFeatures: const [FontFeature.tabularFigures()],
                         ),
                       ),
                     ),
@@ -407,34 +463,94 @@ class _NavigationPageState extends State<NavigationPage>
                 ),
               ),
             ),
-          ),
-      ],
-    );
-  }
-
-  Future<void> _confirmStop() async {
-    final shouldStop = await showDialog<bool>(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: const Text('Arrêter le guidage ?'),
-        content: const Text(
-          'La position ne sera plus suivie et l’écran pourra de nouveau s’éteindre.',
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context, false),
-            child: const Text('Continuer'),
-          ),
-          FilledButton(
-            onPressed: () => Navigator.pop(context, true),
-            child: const Text('Arrêter'),
-          ),
+          if (session.status == NavigationStatus.arrived)
+            Positioned.fill(
+              child: ColoredBox(
+                color: Colors.black54,
+                child: SafeArea(
+                  child: SingleChildScrollView(
+                    padding: const EdgeInsets.all(28),
+                    child: Center(
+                      child: Card(
+                        margin: EdgeInsets.zero,
+                        child: Padding(
+                          padding: const EdgeInsets.all(28),
+                          child: Column(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              const Icon(
+                                Icons.flag_circle_rounded,
+                                color: AppPalette.primary,
+                                size: 64,
+                              ),
+                              const SizedBox(height: 16),
+                              Text(
+                                'Vous êtes arrivé',
+                                style: Theme.of(
+                                  context,
+                                ).textTheme.headlineSmall,
+                              ),
+                              const SizedBox(height: 8),
+                              Text(
+                                widget.destination.label,
+                                textAlign: TextAlign.center,
+                              ),
+                              const SizedBox(height: 22),
+                              FilledButton(
+                                onPressed: () => Navigator.pop(context),
+                                child: const Text('Terminer'),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ),
+                    ),
+                  ),
+                ),
+              ),
+            ),
         ],
       ),
     );
+  }
+
+  double _mapControlsBottom(BuildContext context, double availableWidth) {
+    if (availableWidth >= 700) return 12;
+    return MediaQuery.textScalerOf(context).scale(1) >= 1.5 ? 300 : 230;
+  }
+
+  Future<void> _confirmStop() async {
+    if (_stopDialogOpen) return;
+    _stopDialogOpen = true;
+    bool? shouldStop;
+    try {
+      shouldStop = await showDialog<bool>(
+        context: context,
+        builder: (context) => AlertDialog(
+          title: const Text('Arrêter le guidage ?'),
+          content: const Text(
+            'La position ne sera plus suivie et l’écran pourra de nouveau s’éteindre.',
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(context, false),
+              child: const Text('Continuer'),
+            ),
+            FilledButton(
+              onPressed: () => Navigator.pop(context, true),
+              child: const Text('Arrêter'),
+            ),
+          ],
+        ),
+      );
+    } finally {
+      _stopDialogOpen = false;
+    }
     if (shouldStop != true || !mounted) return;
     await _controller.stop();
-    if (mounted) Navigator.pop(context);
+    if (!mounted) return;
+    setState(() => _allowPop = true);
+    Navigator.pop(context);
   }
 
   Future<void> _openExternal() async {
@@ -484,6 +600,7 @@ class _NavigationPageState extends State<NavigationPage>
 
 class _LiveNavigationMap extends StatefulWidget {
   const _LiveNavigationMap({
+    super.key,
     required this.session,
     required this.onFollowingChanged,
     this.tileProvider,
@@ -509,7 +626,7 @@ class _LiveNavigationMapState extends State<_LiveNavigationMap> {
     super.initState();
     _mapRotation =
         widget.initialMapRotationDegrees ??
-        widget.session.displayHeadingDegrees;
+        navigationCameraRotationDegrees(widget.session.displayHeadingDegrees);
   }
 
   @override
@@ -531,7 +648,11 @@ class _LiveNavigationMapState extends State<_LiveNavigationMap> {
     final position = widget.session.snappedPosition;
     if (position == null) return;
     final heading = widget.session.displayHeadingDegrees;
-    _mapController.moveAndRotate(position, 17, heading);
+    _mapController.moveAndRotate(
+      position,
+      17,
+      navigationCameraRotationDegrees(heading),
+    );
   }
 
   void _overview() {
@@ -545,6 +666,11 @@ class _LiveNavigationMapState extends State<_LiveNavigationMap> {
         maxZoom: 16,
       ),
     );
+  }
+
+  void _recenter() {
+    widget.onFollowingChanged(true);
+    _follow();
   }
 
   @override
@@ -661,31 +787,6 @@ class _LiveNavigationMapState extends State<_LiveNavigationMap> {
             attributions: [
               const TextSourceAttribution('© IGN – cartes.gouv.fr'),
             ],
-          ),
-          Positioned(
-            right: 12,
-            bottom: 190,
-            child: Column(
-              children: [
-                FloatingActionButton.small(
-                  heroTag: 'navigation-overview',
-                  tooltip: 'Voir tout le trajet',
-                  onPressed: _overview,
-                  child: const Icon(Icons.route),
-                ),
-                const SizedBox(height: 8),
-                if (!session.followingUser)
-                  FloatingActionButton.small(
-                    heroTag: 'navigation-recenter',
-                    tooltip: 'Recentrer sur ma position',
-                    onPressed: () {
-                      widget.onFollowingChanged(true);
-                      _follow();
-                    },
-                    child: const Icon(Icons.my_location),
-                  ),
-              ],
-            ),
           ),
         ],
       ),

@@ -8,46 +8,153 @@ class _InstructionBanner extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final step = session.upcomingStep;
-    return Card(
-      key: const Key('navigation-instruction'),
-      child: Padding(
-        padding: const EdgeInsets.all(16),
-        child: Row(
-          children: [
-            Container(
-              width: 54,
-              height: 54,
-              decoration: BoxDecoration(
-                color: AppPalette.card(Theme.of(context).brightness),
-                borderRadius: BorderRadius.circular(17),
+    final instruction =
+        step?.normalizedType == 'arrive' && session.remainingDistanceMeters > 80
+        ? 'Continuez vers votre destination'
+        : step?.instruction ?? 'Suivez l’itinéraire';
+    return Semantics(
+      container: true,
+      liveRegion: true,
+      label: '${session.formattedDistanceToManeuver}, $instruction',
+      excludeSemantics: true,
+      child: Card(
+        child: Padding(
+          padding: const EdgeInsets.all(16),
+          child: Row(
+            children: [
+              _ManeuverVisual(step: step),
+              const SizedBox(width: 14),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      session.formattedDistanceToManeuver,
+                      style: Theme.of(context).textTheme.titleLarge,
+                    ),
+                    Text(
+                      instruction,
+                      style: Theme.of(context).textTheme.bodyLarge,
+                    ),
+                  ],
+                ),
               ),
-              child: Icon(
-                navigationInstructionIcon(step),
-                color: Colors.white,
-                size: 30,
-              ),
-            ),
-            const SizedBox(width: 14),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    session.formattedDistanceToManeuver,
-                    style: Theme.of(context).textTheme.titleLarge,
-                  ),
-                  Text(
-                    step?.normalizedType == 'arrive'
-                        ? 'Continuez vers votre destination'
-                        : step?.instruction ?? 'Suivez l’itinéraire',
-                  ),
-                ],
-              ),
-            ),
-          ],
+            ],
+          ),
         ),
       ),
     );
+  }
+}
+
+class _ManeuverVisual extends StatelessWidget {
+  const _ManeuverVisual({required this.step});
+
+  final RouteStep? step;
+
+  @override
+  Widget build(BuildContext context) {
+    final currentStep = step;
+    final ordinal = currentStep?.exitOrdinal;
+    final isNumberedRoundabout =
+        currentStep != null && currentStep.isRoundabout && ordinal != null;
+    return Container(
+      width: 68,
+      height: 68,
+      decoration: BoxDecoration(
+        color: AppPalette.card(Theme.of(context).brightness),
+        borderRadius: BorderRadius.circular(19),
+      ),
+      child: isNumberedRoundabout
+          ? Stack(
+              fit: StackFit.expand,
+              children: [
+                CustomPaint(
+                  painter: _RoundaboutExitPainter(
+                    exitAngleDegrees: roundaboutExitAngleDegrees(currentStep),
+                    color: Colors.white,
+                  ),
+                ),
+                Center(
+                  child: Text(
+                    ordinal,
+                    style: Theme.of(context).textTheme.labelLarge?.copyWith(
+                      color: Colors.white,
+                      fontWeight: FontWeight.w900,
+                    ),
+                  ),
+                ),
+              ],
+            )
+          : Icon(
+              navigationInstructionIcon(currentStep),
+              color: Colors.white,
+              size: 34,
+            ),
+    );
+  }
+}
+
+class _RoundaboutExitPainter extends CustomPainter {
+  const _RoundaboutExitPainter({
+    required this.exitAngleDegrees,
+    required this.color,
+  });
+
+  final double exitAngleDegrees;
+  final Color color;
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final shortestSide = math.min(size.width, size.height);
+    final center = Offset(size.width / 2, size.height / 2);
+    final radius = shortestSide * 0.24;
+    final edgeDistance = shortestSide / 2 - 6;
+    final basePaint = Paint()
+      ..color = color.withValues(alpha: 0.82)
+      ..style = PaintingStyle.stroke
+      ..strokeCap = StrokeCap.round
+      ..strokeWidth = 4;
+    final exitPaint = Paint()
+      ..color = color
+      ..style = PaintingStyle.stroke
+      ..strokeCap = StrokeCap.round
+      ..strokeJoin = StrokeJoin.round
+      ..strokeWidth = 5.5;
+
+    canvas.drawCircle(center, radius, basePaint);
+    canvas.drawLine(
+      center + Offset(0, radius),
+      Offset(center.dx, size.height - 5),
+      basePaint,
+    );
+
+    final radians = exitAngleDegrees * math.pi / 180;
+    final direction = Offset(math.sin(radians), -math.cos(radians));
+    final branchStart = center + direction * radius;
+    final branchEnd = center + direction * edgeDistance;
+    canvas.drawLine(branchStart, branchEnd, exitPaint);
+
+    final perpendicular = Offset(-direction.dy, direction.dx);
+    final arrowBase = branchEnd - direction * 7;
+    final arrow = Path()
+      ..moveTo(branchEnd.dx, branchEnd.dy)
+      ..lineTo(
+        arrowBase.dx + perpendicular.dx * 4,
+        arrowBase.dy + perpendicular.dy * 4,
+      )
+      ..moveTo(branchEnd.dx, branchEnd.dy)
+      ..lineTo(
+        arrowBase.dx - perpendicular.dx * 4,
+        arrowBase.dy - perpendicular.dy * 4,
+      );
+    canvas.drawPath(arrow, exitPaint);
+  }
+
+  @override
+  bool shouldRepaint(covariant _RoundaboutExitPainter oldDelegate) {
+    return oldDelegate.exitAngleDegrees != exitAngleDegrees ||
+        oldDelegate.color != color;
   }
 }
 
@@ -56,7 +163,6 @@ class _NavigationControls extends StatelessWidget {
     required this.session,
     required this.compact,
     required this.now,
-    required this.onRecenter,
     required this.onExternal,
     required this.onStop,
   });
@@ -64,7 +170,6 @@ class _NavigationControls extends StatelessWidget {
   final NavigationSession session;
   final bool compact;
   final DateTime Function() now;
-  final VoidCallback onRecenter;
   final VoidCallback onExternal;
   final VoidCallback onStop;
 
@@ -72,31 +177,25 @@ class _NavigationControls extends StatelessWidget {
   Widget build(BuildContext context) {
     return Card(
       child: Padding(
-        padding: const EdgeInsets.all(16),
+        padding: EdgeInsets.all(compact ? 12 : 16),
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            Wrap(
-              alignment: WrapAlignment.spaceEvenly,
-              spacing: 8,
-              runSpacing: 8,
+            Row(
               children: [
-                SizedBox(
-                  width: compact ? 82 : 104,
+                Expanded(
                   child: _Metric(
                     label: 'Restant',
                     value: session.formattedRemainingDistance,
                   ),
                 ),
-                SizedBox(
-                  width: compact ? 82 : 104,
+                Expanded(
                   child: _Metric(
                     label: 'Durée',
                     value: session.formattedRemainingDuration,
                   ),
                 ),
-                SizedBox(
-                  width: compact ? 82 : 104,
+                Expanded(
                   child: _Metric(
                     label: 'Arrivée',
                     value: _arrivalTime(session.remainingDurationSeconds),
@@ -105,28 +204,54 @@ class _NavigationControls extends StatelessWidget {
               ],
             ),
             const SizedBox(height: 12),
-            Wrap(
-              alignment: WrapAlignment.end,
-              crossAxisAlignment: WrapCrossAlignment.center,
-              spacing: 8,
-              runSpacing: 8,
-              children: [
-                OutlinedButton.icon(
-                  onPressed: session.followingUser ? null : onRecenter,
-                  icon: const Icon(Icons.my_location),
-                  label: const Text('Recentrer'),
-                ),
-                IconButton.filledTonal(
-                  tooltip: 'Ouvrir dans une autre application',
-                  onPressed: onExternal,
-                  icon: const Icon(Icons.open_in_new),
-                ),
-                IconButton.filled(
-                  tooltip: 'Arrêter',
-                  onPressed: onStop,
-                  icon: const Icon(Icons.stop_rounded),
-                ),
-              ],
+            LayoutBuilder(
+              builder: (context, constraints) {
+                final stackButtons =
+                    constraints.maxWidth < 330 ||
+                    MediaQuery.textScalerOf(context).scale(1) >= 1.8;
+                final buttons = <Widget>[
+                  Tooltip(
+                    message: 'Ouvrir dans une autre application',
+                    child: OutlinedButton.icon(
+                      key: const ValueKey('navigation-external-button'),
+                      style: OutlinedButton.styleFrom(
+                        minimumSize: const Size(0, 56),
+                        padding: const EdgeInsets.symmetric(horizontal: 16),
+                      ),
+                      onPressed: onExternal,
+                      icon: const Icon(Icons.open_in_new_rounded),
+                      label: const Text('Autre GPS'),
+                    ),
+                  ),
+                  FilledButton.icon(
+                    key: const ValueKey('navigation-stop-button'),
+                    style: FilledButton.styleFrom(
+                      minimumSize: const Size(0, 56),
+                      padding: const EdgeInsets.symmetric(horizontal: 16),
+                    ),
+                    onPressed: onStop,
+                    icon: const Icon(Icons.stop_rounded),
+                    label: const Text('Arrêter'),
+                  ),
+                ];
+                if (stackButtons) {
+                  return Column(
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    children: [
+                      buttons.first,
+                      const SizedBox(height: 8),
+                      buttons.last,
+                    ],
+                  );
+                }
+                return Row(
+                  children: [
+                    Expanded(child: buttons.first),
+                    const SizedBox(width: 8),
+                    Expanded(child: buttons.last),
+                  ],
+                );
+              },
             ),
           ],
         ),
