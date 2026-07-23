@@ -116,11 +116,17 @@ class RouteStep {
     _ => false,
   };
 
-  String? get roundaboutExitInstruction {
+  String? get exitOrdinal {
     final exit = exitNumber;
-    if (!isRoundabout || exit == null) return null;
+    if (exit == null) return null;
+    return exit == 1 ? '1re' : '${exit}e';
+  }
+
+  String? get roundaboutExitInstruction {
+    final ordinal = exitOrdinal;
+    if (!isRoundabout || ordinal == null) return null;
     final road = roadName.isEmpty ? '' : ' sur $roadName';
-    return 'Prenez maintenant la ${exit == 1 ? '1re' : '${exit}e'} sortie$road';
+    return 'Prenez maintenant la $ordinal sortie$road';
   }
 
   String get instruction {
@@ -140,10 +146,10 @@ class RouteStep {
         : normalizedDirection == 'straight'
         ? 'Continuez tout droit$road'
         : 'Tournez $direction$road';
-    final exit = exitNumber;
-    final roundaboutInstruction = exit == null
+    final ordinal = exitOrdinal;
+    final roundaboutInstruction = ordinal == null
         ? 'Entrez dans le rond-point${roadName.isEmpty ? '' : road}'
-        : 'Au rond-point, prenez la ${exit == 1 ? '1re' : '${exit}e'} sortie'
+        : 'Au rond-point, prenez la $ordinal sortie'
               '${roadName.isEmpty ? '' : road}';
 
     return switch (normalizedType) {

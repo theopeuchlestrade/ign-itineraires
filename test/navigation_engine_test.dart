@@ -277,6 +277,38 @@ void main() {
       expect(decision.angularDifferenceDegrees, 180);
       expect(decision.source, NavigationHeadingSource.gps);
     });
+
+    test('prioritizes a reliable course through a sharp turn', () {
+      final tracker = NavigationHeadingTracker(TravelMode.car);
+      final start = _position(
+        48.8566,
+        2.3522,
+        headingDegrees: 20,
+        timestamp: DateTime(2026, 1, 1, 12),
+      );
+      final sharpTurn = _position(
+        48.8568,
+        2.3522,
+        headingDegrees: 200,
+        timestamp: DateTime(2026, 1, 1, 12, 0, 2),
+      );
+
+      tracker.resolve(
+        start,
+        routeHeadingDegrees: 20,
+        distanceFromRouteMeters: 0,
+      );
+      final decision = tracker.resolve(
+        sharpTurn,
+        routeHeadingDegrees: 0,
+        distanceFromRouteMeters: 0,
+      );
+
+      expect(decision.displayHeadingDegrees, 200);
+      expect(decision.gpsHeadingDegrees, 200);
+      expect(decision.movementHeadingDegrees, closeTo(0, 1));
+      expect(decision.source, NavigationHeadingSource.gps);
+    });
   });
 
   group('GuidanceAnnouncementPlanner', () {
