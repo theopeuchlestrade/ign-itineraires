@@ -18,6 +18,7 @@ class _InstructionBanner extends StatelessWidget {
       label: '${session.formattedDistanceToManeuver}, $instruction',
       excludeSemantics: true,
       child: Card(
+        key: const Key('navigation-instruction'),
         child: Padding(
           padding: const EdgeInsets.all(16),
           child: Row(
