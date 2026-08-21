@@ -348,6 +348,7 @@ class NavigationController extends ChangeNotifier {
         await _speak('Itinéraire recalculé.');
       }
     } on GeoplateformeException catch (error) {
+      _reroutePolicy.markFailure(_now(), retryAfter: error.retryAfter);
       _deviationPolicy.clearOffRouteFixes();
       _setSession(
         session.copyWith(
@@ -358,6 +359,7 @@ class NavigationController extends ChangeNotifier {
       );
       await _ensureForegroundServices(operation);
     } catch (_) {
+      _reroutePolicy.markFailure(_now());
       _deviationPolicy.clearOffRouteFixes();
       _setSession(
         session.copyWith(

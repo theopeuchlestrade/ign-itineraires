@@ -46,7 +46,7 @@ void main() {
     await harness.dispose();
   });
 
-  test('enforces the twenty second reroute cooldown', () async {
+  test('prevents immediate repeated reroutes', () async {
     final harness = _Harness();
     await harness.controller.start();
 
@@ -64,6 +64,30 @@ void main() {
     expect(harness.api.callCount, 2);
     await harness.dispose();
   });
+
+  test(
+    'reroutes again promptly while the user keeps leaving the route',
+    () async {
+      final harness = _Harness();
+      await harness.controller.start();
+
+      for (var index = 1; index <= 7; index++) {
+        harness.advance(const Duration(seconds: 2));
+        harness.location.add(
+          _position(0.001, index * 0.001, timestamp: harness.now),
+        );
+        await Future<void>.delayed(Duration.zero);
+      }
+      await Future<void>.delayed(Duration.zero);
+
+      expect(harness.api.callCount, 3);
+      expect(
+        harness.api.lastStart,
+        const Place.current(latitude: 0.001, longitude: 0.007),
+      );
+      await harness.dispose();
+    },
+  );
 
   test('keeps the old route when rerouting fails', () async {
     final harness = _Harness()..api.failOnCall = 2;
