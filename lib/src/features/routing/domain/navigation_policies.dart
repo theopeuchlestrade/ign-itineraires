@@ -113,7 +113,7 @@ class RouteDeviationPolicy {
     final offRouteSince = _offRouteSince;
     final offRouteLongEnough =
         offRouteSince != null &&
-        timestamp.difference(offRouteSince) >= const Duration(seconds: 4);
+        timestamp.difference(offRouteSince) >= const Duration(seconds: 2);
     return (_offRouteFixes >= 3 && offRouteLongEnough) ||
         _reverseDirectionFixes >= 3;
   }
@@ -132,15 +132,31 @@ class RouteDeviationPolicy {
 }
 
 class ReroutePolicy {
-  DateTime? _lastRerouteAt;
+  static const successfulRerouteCooldown = Duration(seconds: 8);
+  static const failedRerouteCooldown = Duration(seconds: 20);
+
+  DateTime? _lastAttemptAt;
+  DateTime? _retryNotBefore;
 
   bool markAttempt(DateTime now, {required bool force}) {
-    if (!force &&
-        _lastRerouteAt != null &&
-        now.difference(_lastRerouteAt!) < const Duration(seconds: 20)) {
+    final retryNotBefore = _retryNotBefore;
+    if (!force && retryNotBefore != null && now.isBefore(retryNotBefore)) {
       return false;
     }
-    _lastRerouteAt = now;
+    _lastAttemptAt = now;
+    _retryNotBefore = now.add(successfulRerouteCooldown);
     return true;
+  }
+
+  void markFailure(DateTime now, {Duration? retryAfter}) {
+    final attemptAt = _lastAttemptAt ?? now;
+    var retryNotBefore = attemptAt.add(failedRerouteCooldown);
+    if (retryAfter != null) {
+      final serviceRetryNotBefore = now.add(retryAfter);
+      if (serviceRetryNotBefore.isAfter(retryNotBefore)) {
+        retryNotBefore = serviceRetryNotBefore;
+      }
+    }
+    _retryNotBefore = retryNotBefore;
   }
 }
