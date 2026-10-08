@@ -124,10 +124,13 @@ class NavigationController extends ChangeNotifier {
         operation: operation,
       );
     } on DeviceLocationException catch (error) {
+      if (!_canContinue(operation)) return;
       _fail(error.message, recovery: error.recovery);
     } on GeoplateformeException catch (error) {
+      if (!_canContinue(operation)) return;
       _fail(error.message);
     } catch (_) {
+      if (!_canContinue(operation)) return;
       _fail('Le guidage n’a pas pu démarrer.');
     }
   }
@@ -178,6 +181,7 @@ class NavigationController extends ChangeNotifier {
         return;
       }
     } catch (_) {
+      if (!_canContinue(operation)) return;
       _setSession(
         session.copyWith(
           message: 'L’écran pourrait s’éteindre pendant le guidage.',
@@ -348,6 +352,7 @@ class NavigationController extends ChangeNotifier {
         await _speak('Itinéraire recalculé.');
       }
     } on GeoplateformeException catch (error) {
+      if (!_canContinue(operation)) return;
       _reroutePolicy.markFailure(_now(), retryAfter: error.retryAfter);
       _deviationPolicy.clearOffRouteFixes();
       _setSession(
@@ -359,6 +364,7 @@ class NavigationController extends ChangeNotifier {
       );
       await _ensureForegroundServices(operation);
     } catch (_) {
+      if (!_canContinue(operation)) return;
       _reroutePolicy.markFailure(_now());
       _deviationPolicy.clearOffRouteFixes();
       _setSession(
