@@ -100,6 +100,7 @@ class RoutingController extends ChangeNotifier {
   void setStart(Place? place) {
     _locationGeneration++;
     _calculationGeneration++;
+    _locating = false;
     _calculating = false;
     _start = place;
     _route = null;
