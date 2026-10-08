@@ -35,7 +35,9 @@ Search does not transmit the current position to rank results. Route calculation
 - Maximum ten recent trips if history is enabled.
 
 History is disabled by default. Disabling it or using the clear-history action
-deletes locally stored trips.
+deletes locally stored trips after any in-flight history write has finished.
+Route calculations already in progress when deletion is requested cannot
+repopulate the history.
 
 Flutter uses `shared_preferences`: application storage on Android and iOS, and browser storage on the web. This data is not synchronized.
 
