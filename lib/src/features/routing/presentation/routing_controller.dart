@@ -148,6 +148,8 @@ class RoutingController extends ChangeNotifier {
     try {
       final current = await _location.currentPlace();
       if (generation != _locationGeneration) return;
+      _calculationGeneration++;
+      _calculating = false;
       _start = current;
       _route = null;
       if (!silent) {
