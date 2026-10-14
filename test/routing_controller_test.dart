@@ -209,6 +209,7 @@ void main() {
       final second = controller.setHistoryEnabled(true);
 
       expect(controller.historyMutationInProgress, isTrue);
+      await Future<void>.delayed(Duration.zero);
       expect(harness.store.saveHistoryCalls, 1);
       gate.complete();
       await Future.wait([first, second]);

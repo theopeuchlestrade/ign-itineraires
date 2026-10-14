@@ -32,6 +32,8 @@ class RoutingController extends ChangeNotifier {
   int _retrySecondsRemaining = 0;
   int _locationGeneration = 0;
   int _calculationGeneration = 0;
+  int _historyGeneration = 0;
+  Future<void> _historyOperations = Future<void>.value();
   Timer? _retryTimer;
   bool _disposed = false;
 
@@ -98,6 +100,7 @@ class RoutingController extends ChangeNotifier {
   void setStart(Place? place) {
     _locationGeneration++;
     _calculationGeneration++;
+    _locating = false;
     _calculating = false;
     _start = place;
     _route = null;
@@ -146,6 +149,8 @@ class RoutingController extends ChangeNotifier {
     try {
       final current = await _location.currentPlace();
       if (generation != _locationGeneration) return;
+      _calculationGeneration++;
+      _calculating = false;
       _start = current;
       _route = null;
       if (!silent) {
@@ -193,6 +198,7 @@ class RoutingController extends ChangeNotifier {
       return;
     }
     final generation = ++_calculationGeneration;
+    final historyGeneration = _historyGeneration;
     final selectedStart = start;
     final selectedDestination = destination;
     if (selectedStart == null || selectedDestination == null) {
@@ -214,7 +220,7 @@ class RoutingController extends ChangeNotifier {
       if (generation != _calculationGeneration) return;
       _route = result;
       _clearRouteRetry();
-      if (historyEnabled) {
+      if (historyEnabled && historyGeneration == _historyGeneration) {
         final recent = RecentRoute(
           start: selectedStart,
           destination: selectedDestination,
@@ -223,22 +229,33 @@ class RoutingController extends ChangeNotifier {
           durationSeconds: result.durationSeconds,
           createdAt: DateTime.now(),
         );
-        final updatedRecents = [
-          recent,
-          ...recents.where(
-            (item) =>
-                item.start != selectedStart ||
-                item.destination != selectedDestination ||
-                item.mode != mode,
-          ),
-        ].take(10).toList(growable: false);
         try {
-          await _store.saveRecents(updatedRecents);
-          _recents = updatedRecents;
+          await _queueHistoryOperation(() async {
+            if (_disposed ||
+                !historyEnabled ||
+                historyGeneration != _historyGeneration) {
+              return;
+            }
+            final updatedRecents = [
+              recent,
+              ...recents.where(
+                (item) =>
+                    item.start != recent.start ||
+                    item.destination != recent.destination ||
+                    item.mode != recent.mode,
+              ),
+            ].take(10).toList(growable: false);
+            await _store.saveRecents(updatedRecents);
+            if (!_disposed && historyGeneration == _historyGeneration) {
+              _recents = updatedRecents;
+            }
+          });
         } catch (_) {
-          _showMessage(
-            'Itinéraire calculé, mais l’historique n’a pas pu être enregistré.',
-          );
+          if (historyGeneration == _historyGeneration) {
+            _showMessage(
+              'Itinéraire calculé, mais l’historique n’a pas pu être enregistré.',
+            );
+          }
         }
       }
     } on GeoplateformeException catch (error) {
@@ -296,12 +313,15 @@ class RoutingController extends ChangeNotifier {
   Future<void> setHistoryEnabled(bool enabled) async {
     if (historyEnabled == enabled || historyMutationInProgress) return;
     _historyMutationInProgress = true;
+    if (!enabled) _historyGeneration++;
     _notify();
     try {
-      if (!enabled) await _store.clearRecents();
-      await _store.saveHistoryEnabled(enabled);
-      _historyEnabled = enabled;
-      if (!enabled) _recents = const [];
+      await _queueHistoryOperation(() async {
+        if (!enabled) await _store.clearRecents();
+        await _store.saveHistoryEnabled(enabled);
+        _historyEnabled = enabled;
+        if (!enabled) _recents = const [];
+      });
     } catch (_) {
       _showError('La préférence d’historique n’a pas pu être enregistrée.');
       return;
@@ -314,16 +334,29 @@ class RoutingController extends ChangeNotifier {
   Future<void> clearRecents() async {
     if (historyMutationInProgress) return;
     _historyMutationInProgress = true;
+    _historyGeneration++;
     _notify();
     try {
-      await _store.clearRecents();
-      _recents = const [];
+      await _queueHistoryOperation(() async {
+        await _store.clearRecents();
+        _recents = const [];
+      });
     } catch (_) {
       _showError('L’historique n’a pas pu être effacé.');
     } finally {
       _historyMutationInProgress = false;
       _notify();
     }
+  }
+
+  Future<void> _queueHistoryOperation(Future<void> Function() operation) {
+    final next = _historyOperations.then((_) => operation());
+    // A failed operation must not prevent a later deletion or preference change.
+    _historyOperations = next.then<void>(
+      (_) {},
+      onError: (Object error, StackTrace stackTrace) {},
+    );
+    return next;
   }
 
   void clearMessage() {
