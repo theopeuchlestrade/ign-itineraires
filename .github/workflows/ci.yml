@@ -49,7 +49,7 @@ jobs:
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
       - name: Scan Dart and npm lockfiles
-        uses: google/osv-scanner-action/osv-scanner-action@a345acffa64b0eaede81a3d9aae6141214d9c8fc # v2.6.0
+        uses: google/osv-scanner-action/osv-scanner-action@b1d267aea5211fa648d9d442fa64b90dbdcbdd36 # v2.7.0
         with:
           scan-args: |-
             --lockfile=pubspec.lock
@@ -170,7 +170,7 @@ jobs:
           --timeout=120
           --no-web-resources-cdn
           --screenshot=build/test-screenshots
-      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         if: always()
         with:
           name: web-integration-screenshots
@@ -219,7 +219,7 @@ jobs:
         run: |
           mkdir -p build/guidance-reports
           flutter test integration_test/guidance_replay_test.dart -d "${IOS_SIMULATOR_ID}" --file-reporter json:build/guidance-reports/ios-simulator.json
-      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         if: always() && (github.event_name == 'schedule' || github.event_name == 'workflow_dispatch')
         with:
           name: ios-guidance-report
@@ -354,7 +354,7 @@ jobs:
           script: |
             mkdir -p build/guidance-reports
             flutter test integration_test/guidance_replay_test.dart -d emulator-5554 --file-reporter json:build/guidance-reports/android-api-24.json
-      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         if: always()
         with:
           name: android-api-24-screenshots
