@@ -102,6 +102,7 @@ jobs:
           node-version: 24
           cache: npm
       - run: npm ci
+      - run: node --test tool/web_loader_test.mjs
       - run: npx playwright install --with-deps chromium
       - name: Smoke-test the exact Pages artifact
         run: |
