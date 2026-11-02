@@ -76,4 +76,13 @@ void main(List<String> arguments) {
       .writeAsStringSync(jsonEncode({'bootstrap': bootstrapName}));
   File('web/retire_service_worker.js')
       .copySync('${buildDirectory.path}/flutter_service_worker.js');
+  // flutter run/drive use the standard bootstrap. Only a prepared release has
+  // the manifest and fingerprinted assets needed by the production loader.
+  final index = File('${buildDirectory.path}/index.html');
+  index.writeAsStringSync(
+    index.readAsStringSync().replaceFirst(
+      '<script src="flutter_bootstrap.js" async></script>',
+      '<script src="app_loader.js" defer></script>',
+    ),
+  );
 }
