@@ -8,12 +8,15 @@ Thanks for contributing to IGN Itinéraires!
 
 ## Prerequisites
 
-- Flutter 3.44.1 or a compatible stable release
-- Dart SDK (supplied by Flutter)
+- Flutter 3.47.9 or a compatible stable release
+- Dart 3.13.7 (supplied by Flutter; do not upgrade it separately)
 - Chrome for web development
 - Android Studio or Xcode only when working on the corresponding native target
 
 No IGN Itinéraires backend, API key, or local environment file is required. The application calls public Géoplateforme services directly.
+
+See [Toolchain support](docs/toolchain-support.md) for the distinction between
+LTS and stable versions and the pinned build environments.
 
 ## Setting Up
 

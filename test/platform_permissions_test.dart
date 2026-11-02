@@ -4,9 +4,8 @@ import 'package:flutter_test/flutter_test.dart';
 
 void main() {
   test('Android requests foreground location only', () {
-    final manifest = File(
-      'android/app/src/main/AndroidManifest.xml',
-    ).readAsStringSync();
+    final manifest = File('android/app/src/main/AndroidManifest.xml')
+        .readAsStringSync();
 
     expect(manifest, contains('android.permission.ACCESS_COARSE_LOCATION'));
     expect(manifest, contains('android.permission.ACCESS_FINE_LOCATION'));

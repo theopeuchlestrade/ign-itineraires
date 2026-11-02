@@ -3,6 +3,7 @@
 
 import 'dart:io';
 import 'dart:math';
+
 import 'package:image/image.dart';
 
 void main() {
@@ -76,9 +77,8 @@ void _drawThickLine(
   Color color,
   int thickness,
 ) {
-  final distance = sqrt(
-    (x2 - x1) * (x2 - x1) + (y2 - y1) * (y2 - y1),
-  ).toDouble();
+  final distance = sqrt((x2 - x1) * (x2 - x1) + (y2 - y1) * (y2 - y1))
+      .toDouble();
   final steps = (distance / 2).ceil();
 
   for (var i = 0; i <= steps; i++) {

@@ -2,7 +2,7 @@
 set -eu
 
 readonly image="ghcr.io/cirruslabs/flutter:stable@sha256:46691e311715845de03a3ba4753a475476936805b29431b1f00f1816981033f8"
-readonly revision="924134a44c189315be2148659913dda1671cbe99"
+readonly revision="c197ca5199e9ee5661e865596c9c07294dfab51c"
 case "${1:-}" in
   "")
     golden_arguments="--update-goldens"

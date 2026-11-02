@@ -55,6 +55,7 @@ void main() {
         expect(body['start'], '2.0,48.0');
         expect(body['end'], '3.0,49.0');
         expect(body['profile'], 'pedestrian');
+        expect(body['resource'], 'bdtopo-valhalla');
         return http.Response(
           '{"geometry":{"type":"LineString","coordinates":'
           '[[2.0,48.0],[3.0,49.0]]},"distance":1000,"duration":600}',
@@ -71,6 +72,47 @@ void main() {
     );
 
     expect(route.distanceMeters, 1000);
+  });
+
+  test('parses Valhalla road names returned as strings', () async {
+    final api = GeoplateformeApi(
+      client: MockClient(
+        (_) async => http.Response(
+          jsonEncode({
+            'geometry': {
+              'type': 'LineString',
+              'coordinates': [
+                [2.0, 48.0],
+                [3.0, 49.0],
+              ],
+            },
+            'distance': 1000,
+            'duration': 600,
+            'portions': [
+              {
+                'steps': [
+                  {
+                    'distance': 100,
+                    'attributes': {'name': ' Rue de Rivoli '},
+                    'instruction': {'type': 'turn', 'modifier': 'right'},
+                  },
+                ],
+              },
+            ],
+          }),
+          200,
+        ),
+      ),
+    );
+
+    final route = await api.calculateRoute(
+      start: const Place(label: 'A', latitude: 48, longitude: 2),
+      destination: const Place(label: 'B', latitude: 49, longitude: 3),
+      mode: TravelMode.car,
+    );
+
+    expect(route.steps.single.roadName, 'Rue de Rivoli');
+    expect(route.steps.single.instruction, contains('Rue de Rivoli'));
   });
 
   test('maps a 429 response to a useful domain exception', () async {

@@ -463,8 +463,7 @@ class NavigationController extends ChangeNotifier {
     } catch (_) {
       _setSession(
         session.copyWith(
-          message:
-              'La voix est modifiée pour cette session, mais la préférence n’a pas pu être enregistrée.',
+          message: 'La voix est modifiée pour cette session, mais la préférence n’a pas pu être enregistrée.',
         ),
       );
     } finally {
@@ -529,8 +528,7 @@ class NavigationController extends ChangeNotifier {
       _setSession(
         session.copyWith(
           signalState: NavigationSignalState.degraded,
-          message:
-              'Aucune position GPS fiable depuis huit secondes. Guidage suspendu.',
+          message: 'Aucune position GPS fiable depuis huit secondes. Guidage suspendu.',
         ),
       );
     });

@@ -4,14 +4,14 @@ This guide installs and runs IGN Itinéraires on a personal iPhone from a Mac.
 The first pairing and installation use a USB cable. After that, Xcode and
 Flutter can run the application over the local network.
 
-The iOS target requires iOS 13 or later. A free Apple developer account is
+The iOS target requires iOS 15 or later. A free Apple developer account is
 enough for local testing; App Store distribution requires Apple Developer
 Program membership.
 
 ## Prerequisites
 
 - A Mac with a recent Xcode version and its command-line tools
-- Flutter 3.44.1, or a compatible stable release
+- Flutter 3.47.9, or a compatible stable release
 - An Apple Account added in **Xcode > Settings > Accounts**
 - An unlocked iPhone and a compatible USB cable
 - The Mac and iPhone on the same local network for wireless use

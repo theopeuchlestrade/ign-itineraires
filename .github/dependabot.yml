@@ -38,6 +38,10 @@ updates:
     labels:
       - "dependencies"
       - "docker"
+    # Keep the runtime on nginx stable; 1.31 is the mainline branch.
+    ignore:
+      - dependency-name: "nginx"
+        versions: ["1.31.*"]
 
   - package-ecosystem: "npm"
     directory: "/"

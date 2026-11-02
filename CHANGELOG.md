@@ -42,7 +42,17 @@ initial baseline represented by the repository's root commit.
   nightly Android/iOS simulator journeys, and a coordinate-free physical-device
   diagnostics overlay.
 
+### Changed
+
+- Requires iOS 15 or later with the current Flutter stable SDK.
+- Uses the available IGN `bdtopo-valhalla` routing resource after retirement
+  of `bdtopo-osrm`, preserving the same public host and POST request privacy.
+
 ### Implementation
+
+- Updates the pinned SDK to Flutter 3.47.9 / Dart 3.13.7 and enables web
+  1.1.2; uses Ubuntu 24.04 LTS for Linux CI and nginx 1.30.6 stable for the
+  production container, with documented upstream support policies.
 
 - Uses a Manrope-based Material 3 identity with bundled font assets.
 - Integrates iOS plugins through Swift Package Manager and implements speech

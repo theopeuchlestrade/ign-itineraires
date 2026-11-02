@@ -86,9 +86,10 @@ void main() {
       ),
     );
 
-    final httpsHosts = RegExp(
-      r'https://([^\s;]+)',
-    ).allMatches(csp).map((match) => match.group(1)!).toSet();
+    final httpsHosts = RegExp(r'https://([^\s;]+)')
+        .allMatches(csp)
+        .map((match) => match.group(1)!)
+        .toSet();
 
     expect(
       httpsHosts.difference(NetworkEndpoints.applicationHttpHosts),

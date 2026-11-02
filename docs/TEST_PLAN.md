@@ -129,10 +129,10 @@ within the previous 24 hours.
 | Android | Recent real device | permissions, continuous GPS, TTS, standby, external app |
 | Android | Emulator API 24 | installation, startup, and simulated flow |
 | iOS | Recent real iPhone | permissions, continuous GPS, TTS, standby, Apple Maps |
-| Old iOS | TestFlight on iOS 13–15 | installation and critical flow, if a device is available |
+| Old iOS | TestFlight on iOS 15 or later | installation and critical flow, if a device is available |
 | Tablet | iPad or Android tablet | portrait/landscape layout and enlarged text |
 
-If no iOS 13–15 device is available, record the target as compiled but not
+If no iOS 15 or later device is available, record the target as compiled but not
 physically certified in the release checklist.
 
 ## Functional Scenarios

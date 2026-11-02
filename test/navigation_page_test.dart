@@ -227,9 +227,8 @@ void main() {
   testWidgets('rotates the marker against the map in free view', (
     tester,
   ) async {
-    final session = _navigationSession(
-      headingDegrees: 90,
-    ).copyWith(followingUser: false);
+    final session = _navigationSession(headingDegrees: 90)
+        .copyWith(followingUser: false);
 
     await tester.pumpWidget(
       MaterialApp(

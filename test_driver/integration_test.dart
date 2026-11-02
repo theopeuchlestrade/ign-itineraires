@@ -7,9 +7,8 @@ Future<void> main() {
     onScreenshot: (name, bytes, [arguments]) async {
       final directory = Directory('build/test-screenshots');
       await directory.create(recursive: true);
-      await File(
-        '${directory.path}/$name.png',
-      ).writeAsBytes(bytes, flush: true);
+      await File('${directory.path}/$name.png')
+          .writeAsBytes(bytes, flush: true);
       return true;
     },
   );
