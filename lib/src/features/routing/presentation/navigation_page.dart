@@ -388,8 +388,7 @@ class _NavigationPageState extends State<NavigationPage>
                               if (session.speechRetryAvailable) ...[
                                 const SizedBox(height: 8),
                                 _NavigationMessage(
-                                  message:
-                                      'La voix n’a pas démarré ; le guidage visuel continue.',
+                                  message: 'La voix n’a pas démarré ; le guidage visuel continue.',
                                   actionLabel: 'Réessayer la voix',
                                   onAction: _controller.retrySpeech,
                                 ),
@@ -486,9 +485,9 @@ class _NavigationPageState extends State<NavigationPage>
                               const SizedBox(height: 16),
                               Text(
                                 'Vous êtes arrivé',
-                                style: Theme.of(
-                                  context,
-                                ).textTheme.headlineSmall,
+                                style: Theme.of(context)
+                                    .textTheme
+                                    .headlineSmall,
                               ),
                               const SizedBox(height: 8),
                               Text(

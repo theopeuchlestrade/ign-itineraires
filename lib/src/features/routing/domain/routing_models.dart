@@ -209,16 +209,22 @@ class RouteStep {
     final instruction =
         json['instruction'] as Map<String, dynamic>? ?? const {};
     final attributes = json['attributes'] as Map<String, dynamic>? ?? const {};
-    final name = attributes['name'] as Map<String, dynamic>? ?? const {};
-    final left = (name['nom_1_gauche'] as String? ?? '').trim();
-    final right = (name['nom_1_droite'] as String? ?? '').trim();
+    final name = attributes['name'];
+    final names = name is Map<String, dynamic>
+        ? name
+        : const <String, dynamic>{};
+    final left = (names['nom_1_gauche'] as String? ?? '').trim();
+    final right = (names['nom_1_droite'] as String? ?? '').trim();
+    final roadName = name is String
+        ? name.trim()
+        : (left.isNotEmpty ? left : right);
     final geometry = json['geometry'] as Map<String, dynamic>? ?? const {};
     final coordinates = geometry['coordinates'] as List<dynamic>? ?? const [];
 
     return RouteStep(
       type: instruction['type'] as String? ?? 'continue',
       modifier: instruction['modifier'] as String? ?? 'straight',
-      roadName: left.isNotEmpty ? left : right,
+      roadName: roadName,
       distanceMeters: (json['distance'] as num? ?? 0).toDouble(),
       exitNumber: switch (instruction['exit']) {
         final num value when value.toInt() > 0 => value.toInt(),

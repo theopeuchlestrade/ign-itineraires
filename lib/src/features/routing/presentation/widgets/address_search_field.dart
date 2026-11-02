@@ -263,9 +263,9 @@ class _AddressSearchFieldState extends State<AddressSearchField> {
                       return ListTile(
                         dense: true,
                         selected: index == _highlightedSuggestion,
-                        selectedTileColor: Theme.of(
-                          context,
-                        ).colorScheme.secondaryContainer,
+                        selectedTileColor: Theme.of(context)
+                            .colorScheme
+                            .secondaryContainer,
                         leading: const Icon(Icons.place_outlined),
                         title: Text(place.label),
                         onTap: () => _select(place),

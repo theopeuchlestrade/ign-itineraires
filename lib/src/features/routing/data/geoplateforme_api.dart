@@ -99,7 +99,7 @@ class GeoplateformeApi implements GeoplateformeGateway {
   }) async {
     final uri = Uri.https(_host, '/navigation/itineraire');
     final response = await _post(uri, {
-      'resource': 'bdtopo-osrm',
+      'resource': 'bdtopo-valhalla',
       'start': '${start.longitude},${start.latitude}',
       'end': '${destination.longitude},${destination.latitude}',
       'profile': mode.apiValue,

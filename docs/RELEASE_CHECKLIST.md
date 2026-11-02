@@ -97,7 +97,7 @@ Duplicate this document for each version and keep the results with release notes
 
 ## Compatibility and Accessibility
 
-- [ ] TestFlight on iOS 13–15
+- [ ] TestFlight on iOS 15 or later
 - [ ] If not tested, old compatibility explicitly not certified
 - [ ] Portrait and landscape on tablet
 - [ ] Text at 200%

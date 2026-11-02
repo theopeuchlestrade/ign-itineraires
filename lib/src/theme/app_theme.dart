@@ -244,9 +244,9 @@ class AppPrimaryButton extends StatelessWidget {
           backgroundColor: Colors.transparent,
           disabledBackgroundColor: Colors.transparent,
           foregroundColor: Colors.white,
-          disabledForegroundColor: Theme.of(
-            context,
-          ).colorScheme.onSurfaceVariant,
+          disabledForegroundColor: Theme.of(context)
+              .colorScheme
+              .onSurfaceVariant,
           shadowColor: Colors.transparent,
         ),
         icon: loading

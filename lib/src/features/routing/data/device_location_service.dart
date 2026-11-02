@@ -86,12 +86,11 @@ class DeviceLocationService implements DeviceLocationGateway {
   @override
   Stream<NavigationPosition> watchPositions(TravelMode mode) {
     unawaited(_refreshPrecision(force: true));
-    return Geolocator.getPositionStream(
-      locationSettings: _settings(mode),
-    ).asyncMap((position) async {
-      final precision = await _refreshPrecision();
-      return _fromGeolocator(position, precision: precision);
-    });
+    return Geolocator.getPositionStream(locationSettings: _settings(mode))
+        .asyncMap((position) async {
+          final precision = await _refreshPrecision();
+          return _fromGeolocator(position, precision: precision);
+        });
   }
 
   @override

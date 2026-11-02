@@ -6,7 +6,7 @@
 
 [![CI](https://github.com/theopeuchlestrade/ign-itineraires/actions/workflows/ci.yml/badge.svg)](https://github.com/theopeuchlestrade/ign-itineraires/actions/workflows/ci.yml)
 [![Dependency vulnerability scan](https://github.com/theopeuchlestrade/ign-itineraires/actions/workflows/osv-scanner.yml/badge.svg)](https://github.com/theopeuchlestrade/ign-itineraires/actions/workflows/osv-scanner.yml)
-[![Flutter 3.44.1](https://img.shields.io/badge/Flutter-3.44.1-02569B.svg?logo=flutter)](https://flutter.dev)
+[![Flutter 3.47.9](https://img.shields.io/badge/Flutter-3.47.9-02569B.svg?logo=flutter)](https://flutter.dev)
 [![EUPL-1.2 License](https://img.shields.io/badge/license-EUPL--1.2-brightgreen.svg)](LICENSE)
 
 **IGN Itinéraires** is a privacy-conscious Flutter application for car and
@@ -83,6 +83,7 @@ logos, icons, domains, or product identity. See
 - [First Contribution](docs/first-contribution.md) — Quick start for new contributors
 - [Test on an iPhone](docs/ios-device-testing.md) — Wired and wireless physical-device setup
 - [Architecture](docs/architecture.md) — Technical architecture details
+- [Toolchain support](docs/toolchain-support.md) — SDK versions and support policy
 - [Test Plan](docs/TEST_PLAN.md) — Platform matrix and manual scenarios
 - [Release Checklist](docs/RELEASE_CHECKLIST.md) — Release preparation steps
 - [Privacy Policy](PRIVACY.md) — Data flows and permissions
