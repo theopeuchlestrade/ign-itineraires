@@ -1,4 +1,7 @@
 import 'dart:io';
+import 'dart:convert';
+
+import 'package:crypto/crypto.dart';
 
 void main(List<String> arguments) {
   if (arguments.isNotEmpty) {
@@ -49,4 +52,37 @@ void main(List<String> arguments) {
     }
     bootstrap.writeAsStringSync(contents.replaceFirst(loader, localFallback));
   }
+
+  // Pages has fixed cache headers. Give the executable files immutable names
+  // and discover them through a manifest fetched without the HTTP cache.
+  final entrypoint = File('${buildDirectory.path}/main.dart.js');
+  final entrypointName =
+      'main.${sha256.convert(entrypoint.readAsBytesSync())}.dart.js';
+  entrypoint.copySync('${buildDirectory.path}/$entrypointName');
+  final versionedBootstrap = bootstrap.readAsStringSync().replaceAll(
+    '"mainJsPath":"main.dart.js"',
+    '"mainJsPath":"$entrypointName"',
+  );
+  if (!versionedBootstrap.contains('"mainJsPath":"$entrypointName"')) {
+    stderr.writeln('Unexpected Flutter entrypoint configuration.');
+    exitCode = 2;
+    return;
+  }
+  bootstrap.writeAsStringSync(versionedBootstrap);
+  final bootstrapName =
+      'flutter_bootstrap.${sha256.convert(utf8.encode(versionedBootstrap))}.js';
+  bootstrap.copySync('${buildDirectory.path}/$bootstrapName');
+  File('${buildDirectory.path}/release.json')
+      .writeAsStringSync(jsonEncode({'bootstrap': bootstrapName}));
+  File('web/retire_service_worker.js')
+      .copySync('${buildDirectory.path}/flutter_service_worker.js');
+  // flutter run/drive use the standard bootstrap. Only a prepared release has
+  // the manifest and fingerprinted assets needed by the production loader.
+  final index = File('${buildDirectory.path}/index.html');
+  index.writeAsStringSync(
+    index.readAsStringSync().replaceFirst(
+      '<script src="flutter_bootstrap.js" async></script>',
+      '<script src="app_loader.js" defer></script>',
+    ),
+  );
 }

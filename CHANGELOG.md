@@ -10,6 +10,12 @@ initial baseline represented by the repository's root commit.
 
 ## [Unreleased]
 
+### Fixed
+
+- Load the current web release through a fresh manifest and fingerprinted
+  executables, retiring the legacy Flutter offline cache so returning visitors
+  do not need a second reload to receive a routing-service update.
+
 ### Added
 
 - Added address and place search using the French Géoplateforme.
