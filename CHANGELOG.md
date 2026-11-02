@@ -45,8 +45,8 @@ initial baseline represented by the repository's root commit.
 ### Changed
 
 - Requires iOS 15 or later with the current Flutter stable SDK.
-- Uses the available IGN `bdtopo-valhalla` routing resource after retirement
-  of `bdtopo-osrm`, preserving the same public host and POST request privacy.
+- Uses the available IGN `bdtopo-valhalla` routing resource because
+  `bdtopo-osrm` is no longer advertised by the service, preserving the same public host and POST request privacy.
 
 ### Implementation
 
