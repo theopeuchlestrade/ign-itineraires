@@ -45,6 +45,12 @@ Deleting the application, clearing its storage, or clearing the website data
 also deletes these values. No server-side copy of favorites or route history is
 kept by IGN Itinéraires.
 
+The web application fetches a release manifest from the same static host at
+startup to select the current executable files. Its legacy Flutter service
+worker is unregistered only for this application's scope. This migration does
+not erase favorites or history, delete shared origin caches, or reload open
+tabs. No new external host or personal data is involved in release discovery.
+
 ## Official Web Hosting Logs
 
 The application (deployed on GitHub Pages) is served through a static hosting service. These systems may process the IP address,
