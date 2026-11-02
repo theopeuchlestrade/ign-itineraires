@@ -5,12 +5,15 @@
 FROM ghcr.io/cirruslabs/flutter:stable@sha256:46691e311715845de03a3ba4753a475476936805b29431b1f00f1816981033f8 AS build
 WORKDIR /app
 
+ARG FLUTTER_VERSION=3.47.9
+ENV FLUTTER_VERSION=${FLUTTER_VERSION}
 ARG FLUTTER_REVISION=c197ca5199e9ee5661e865596c9c07294dfab51c
 
 RUN set -eux; \
     flutter_root="$(dirname "$(dirname "$(command -v flutter)")")"; \
-    git -C "${flutter_root}" fetch --depth=1 origin "${FLUTTER_REVISION}"; \
-    git -C "${flutter_root}" checkout --detach FETCH_HEAD; \
+    git -C "${flutter_root}" fetch --depth=1 origin "refs/tags/${FLUTTER_VERSION}:refs/tags/${FLUTTER_VERSION}"; \
+    git -C "${flutter_root}" checkout --detach "${FLUTTER_REVISION}"; \
+    rm -f "${flutter_root}/bin/cache/flutter.version.json" "${flutter_root}/version"; \
     flutter --version; \
     flutter precache --web
 

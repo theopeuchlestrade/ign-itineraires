@@ -141,6 +141,14 @@ jobs:
           cache: true
       - run: flutter pub get --enforce-lockfile
       - run: flutter test test/app_responsive_test.dart
+      - name: Upload golden comparison images on failure
+        if: failure()
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: linux-golden-failures
+          path: test/failures
+          if-no-files-found: ignore
+          retention-days: 7
 
   web-integration:
     name: Chrome integration flow

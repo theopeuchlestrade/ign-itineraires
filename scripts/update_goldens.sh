@@ -2,6 +2,7 @@
 set -eu
 
 readonly image="ghcr.io/cirruslabs/flutter:stable@sha256:46691e311715845de03a3ba4753a475476936805b29431b1f00f1816981033f8"
+readonly version="3.47.9"
 readonly revision="c197ca5199e9ee5661e865596c9c07294dfab51c"
 case "${1:-}" in
   "")
@@ -50,8 +51,9 @@ docker run --rm \
   bash -lc "
     set -euo pipefail
     flutter_root=\"\$(dirname \"\$(dirname \"\$(command -v flutter)\")\")\"
-    git -C \"\${flutter_root}\" fetch --depth=1 origin \"${revision}\"
-    git -C \"\${flutter_root}\" checkout --detach FETCH_HEAD
+    git -C \"\${flutter_root}\" fetch --depth=1 origin \"refs/tags/${version}:refs/tags/${version}\"
+    git -C \"\${flutter_root}\" checkout --detach \"${revision}\"
+    rm -f \"\${flutter_root}/bin/cache/flutter.version.json\" \"\${flutter_root}/version\"
     git config --global --add safe.directory /app
     flutter pub get --enforce-lockfile
     flutter test test/app_responsive_test.dart ${golden_arguments}
