@@ -18,6 +18,8 @@ initial baseline represented by the repository's root commit.
 
 ### Added
 
+- Added a modal bottom-sheet address search on mobile, with keyboard
+  navigation, semantics labels, and a dedicated search input.
 - Added address and place search using the French Géoplateforme.
 - Added car and pedestrian route calculation with distance, duration, geometry,
   and turn-by-turn steps.
