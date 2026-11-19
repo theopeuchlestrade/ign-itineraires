@@ -157,21 +157,206 @@ void main() {
 
     expect(selected, parisDestination);
   });
+
+  for (final size in [const Size(390, 844), const Size(360, 640)]) {
+    testWidgets(
+      'scrolls mobile suggestions in both directions at ${size.width.toInt()}x${size.height.toInt()}',
+      (tester) async {
+        await _useCompactSurface(tester, size);
+        Place? selected;
+        await tester.pumpWidget(
+          _host(
+            (_) async => _mobileSuggestions,
+            onChanged: (value) => selected = value,
+          ),
+        );
+
+        final launcher = find.byKey(
+          const ValueKey('mobile-address-launcher-Départ'),
+        );
+        expect(launcher, findsOneWidget);
+        await tester.tap(launcher);
+        await tester.pumpAndSettle();
+        final searchInput = find.byKey(
+          const ValueKey('mobile-address-search-input'),
+        );
+        expect(searchInput, findsOneWidget);
+        await tester.enterText(
+          find.descendant(of: searchInput, matching: find.byType(EditableText)),
+          'Paris',
+        );
+        await tester.pump(const Duration(milliseconds: 350));
+        await tester.pump();
+
+        final list = find.byKey(const ValueKey('mobile-address-suggestions'));
+        final first = find.byKey(const ValueKey('mobile-address-suggestion-0'));
+        final last = find.byKey(const ValueKey('mobile-address-suggestion-5'));
+        expect(first.hitTestable(), findsOneWidget);
+
+        await tester.drag(list, const Offset(0, -260));
+        await tester.pumpAndSettle();
+
+        expect(
+          tester
+              .widget<EditableText>(
+                find.descendant(
+                  of: searchInput,
+                  matching: find.byType(EditableText),
+                ),
+              )
+              .focusNode
+              .hasFocus,
+          isFalse,
+        );
+        expect(list, findsOneWidget);
+        expect(last.hitTestable(), findsOneWidget);
+
+        await tester.drag(list, const Offset(0, 260));
+        await tester.pumpAndSettle();
+        expect(first.hitTestable(), findsOneWidget);
+
+        await tester.drag(list, const Offset(0, -260));
+        await tester.pumpAndSettle();
+        await tester.tap(last.hitTestable());
+        await tester.pumpAndSettle();
+
+        expect(selected, _mobileSuggestions.last);
+        expect(searchInput, findsNothing);
+        expect(find.text(_mobileSuggestions.last.label), findsOneWidget);
+      },
+    );
+  }
+
+  testWidgets('prefills, cancels, replaces, and clears a mobile selection', (
+    tester,
+  ) async {
+    await _useCompactSurface(tester, const Size(390, 844));
+    final changes = <Place?>[];
+    await tester.pumpWidget(
+      _host(
+        (_) async => const [parisDestination],
+        value: parisStart,
+        onChanged: changes.add,
+      ),
+    );
+
+    final launcher = find.byKey(
+      const ValueKey('mobile-address-launcher-Départ'),
+    );
+    await tester.tap(launcher);
+    await tester.pumpAndSettle();
+    var searchInput = find.byKey(const ValueKey('mobile-address-search-input'));
+    var editable = tester.widget<EditableText>(
+      find.descendant(of: searchInput, matching: find.byType(EditableText)),
+    );
+    expect(editable.controller.text, parisStart.label);
+    expect(
+      editable.controller.selection,
+      TextSelection(baseOffset: 0, extentOffset: parisStart.label.length),
+    );
+
+    await tester.tapAt(const Offset(2, 2));
+    await tester.pumpAndSettle();
+    expect(changes, isEmpty);
+    expect(find.text(parisStart.label), findsOneWidget);
+
+    await tester.tap(launcher);
+    await tester.pumpAndSettle();
+    searchInput = find.byKey(const ValueKey('mobile-address-search-input'));
+    await tester.enterText(
+      find.descendant(of: searchInput, matching: find.byType(EditableText)),
+      'Bastille',
+    );
+    await tester.pump(const Duration(milliseconds: 350));
+    await tester.pump();
+    await tester.tap(find.text(parisDestination.label));
+    await tester.pumpAndSettle();
+    expect(changes, [parisDestination]);
+    expect(find.text(parisDestination.label), findsOneWidget);
+
+    await tester.tap(launcher);
+    await tester.pumpAndSettle();
+    await tester.tap(find.byTooltip('Effacer départ'));
+    await tester.pumpAndSettle();
+    expect(changes, [parisDestination, null]);
+    expect(
+      find.byKey(const ValueKey('mobile-address-search-input')),
+      findsNothing,
+    );
+  });
+
+  testWidgets('mobile search has no overflow at 200 percent text scale', (
+    tester,
+  ) async {
+    await _useCompactSurface(tester, const Size(390, 844), textScale: 2);
+    await tester.pumpWidget(_host((_) async => _mobileSuggestions));
+
+    await tester.tap(
+      find.byKey(const ValueKey('mobile-address-launcher-Départ')),
+    );
+    await tester.pumpAndSettle();
+    final searchInput = find.byKey(
+      const ValueKey('mobile-address-search-input'),
+    );
+    await tester.enterText(
+      find.descendant(of: searchInput, matching: find.byType(EditableText)),
+      'Paris',
+    );
+    await tester.pump(const Duration(milliseconds: 350));
+    await tester.pump();
+
+    expect(tester.takeException(), isNull);
+    expect(
+      find.byKey(const ValueKey('mobile-address-suggestions')),
+      findsOneWidget,
+    );
+  });
 }
 
 Widget _host(
   Future<List<Place>> Function(String) search, {
   ValueChanged<Place?>? onChanged,
+  Place? value,
 }) {
   return MaterialApp(
     home: Scaffold(
       body: AddressSearchField(
         label: 'Départ',
         icon: Icons.trip_origin,
-        value: null,
+        value: value,
         search: search,
         onChanged: onChanged ?? (_) {},
       ),
     ),
   );
 }
+
+Future<void> _useCompactSurface(
+  WidgetTester tester,
+  Size size, {
+  double textScale = 1,
+}) async {
+  tester.view.devicePixelRatio = 1;
+  tester.view.physicalSize = size;
+  await tester.binding.setSurfaceSize(size);
+  tester.view.viewInsets = FakeViewPadding(
+    bottom: size.height < 700 ? 280 : 350,
+  );
+  tester.binding.platformDispatcher.textScaleFactorTestValue = textScale;
+  addTearDown(() async {
+    tester.view.resetViewInsets();
+    tester.view.resetPhysicalSize();
+    tester.view.resetDevicePixelRatio();
+    tester.binding.platformDispatcher.clearTextScaleFactorTestValue();
+    await tester.binding.setSurfaceSize(null);
+  });
+}
+
+const _mobileSuggestions = [
+  Place(label: 'Paris Centre 1', latitude: 48.851, longitude: 2.351),
+  Place(label: 'Paris Centre 2', latitude: 48.852, longitude: 2.352),
+  Place(label: 'Paris Centre 3', latitude: 48.853, longitude: 2.353),
+  Place(label: 'Paris Centre 4', latitude: 48.854, longitude: 2.354),
+  Place(label: 'Paris Centre 5', latitude: 48.855, longitude: 2.355),
+  Place(label: 'Paris Centre 6', latitude: 48.856, longitude: 2.356),
+];

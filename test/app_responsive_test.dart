@@ -172,9 +172,13 @@ void main() {
     tester,
   ) async {
     final harness = TestAppHarness();
+    tester.view.devicePixelRatio = 1;
+    tester.view.physicalSize = const Size(360, 640);
     await tester.binding.setSurfaceSize(const Size(360, 640));
     addTearDown(() async {
       tester.view.resetViewInsets();
+      tester.view.resetPhysicalSize();
+      tester.view.resetDevicePixelRatio();
       await tester.binding.setSurfaceSize(null);
       await harness.dispose();
     });
@@ -226,17 +230,23 @@ Future<void> _selectAddressWithKeyboard(
 
   tester.view.viewInsets = const FakeViewPadding(bottom: 280);
   await tester.pump();
-  await tester.enterText(field, query);
+  await tester.tap(find.byKey(ValueKey('mobile-address-launcher-$fieldLabel')));
+  await tester.pumpAndSettle();
+  final searchInput = find.byKey(const ValueKey('mobile-address-search-input'));
+  expect(searchInput, findsOneWidget);
+  await tester.enterText(
+    find.descendant(of: searchInput, matching: find.byType(EditableText)),
+    query,
+  );
   await tester.pump(const Duration(milliseconds: 350));
   await tester.pump();
 
   final suggestion = find.widgetWithText(ListTile, expectedLabel);
   expect(suggestion, findsOneWidget);
 
-  tester.view.viewInsets = FakeViewPadding.zero;
-  await tester.pumpAndSettle();
-  await tester.ensureVisible(suggestion);
   await tester.tap(suggestion);
+  await tester.pumpAndSettle();
+  tester.view.viewInsets = FakeViewPadding.zero;
   await tester.pumpAndSettle();
 }
 
