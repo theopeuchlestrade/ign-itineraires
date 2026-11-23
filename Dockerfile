@@ -23,7 +23,7 @@ RUN flutter pub get --enforce-lockfile
 COPY . .
 RUN sh scripts/build_web_release.sh /
 
-FROM nginx:1.30.6-alpine@sha256:0e52bd054126cdc040b1276c0af347aeb02a41b9cfe305d6094767ac30e97949 AS runtime
+FROM nginx:1.31.9-alpine@sha256:fb4658584bd9a916ffb6f6e365f97c25cfdb2923801f551ea08356e695f14ff7 AS runtime
 LABEL org.opencontainers.image.source="https://github.com/theopeuchlestrade/ign-itineraires"
 
 COPY nginx.conf /etc/nginx/conf.d/default.conf
